@@ -13,7 +13,8 @@
             "stopAtEntry": false,
             "setupCommands": [
                 { "text": "-enable-pretty-printing" },
-                { "text": "set disassembly-flavor intel"}
+                { "text": "set disassembly-flavor intel"},
+                { "text": "set output-radix 16"}
             ],
             "preLaunchTask": "qemu-gdb"
         }
