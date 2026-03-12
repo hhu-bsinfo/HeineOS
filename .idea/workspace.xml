@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="ALL" />
+  </component>
+  <component name="CargoProjects">
+    <cargoProject FILE="$PROJECT_DIR$/Cargo.toml">
+      <package file="$PROJECT_DIR$/kernel">
+        <feature name="default" enabled="true" />
+      </package>
+    </cargoProject>
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="08ee9731-146f-42cf-a59c-1f6ba37001fb" name="Changes" comment="" />
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="CopilotPersistence">
+    <persistenceIdMap>
+      <entry key="_/home/fabian/Lehre/HeineOS" value="37vDxw1cTVD4M73YjjrhsYXNowY" />
+    </persistenceIdMap>
+  </component>
+  <component name="CopilotUserSelectedModel">
+    <selectedModels>
+      <entry key="inline" value="GPT-5 mini" />
+      <entry key="edit-panel" value="GPT-5 mini" />
+      <entry key="chat-panel" value="GPT-5 mini" />
+      <entry key="agent-panel" value="GPT-5 mini" />
+    </selectedModels>
+  </component>
+  <component name="ExecutionTargetManager" SELECTED_TARGET="RsBuildProfile:test" />
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="Rust File" />
+      </list>
+    </option>
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+    <option name="ROOT_SYNC" value="DONT_SYNC" />
+  </component>
+  <component name="MacroExpansionManager">
+    <option name="directoryName" value="I3a96Y6d" />
+  </component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 8
+}</component>
+  <component name="ProjectId" id="37vDxw1cTVD4M73YjjrhsYXNowY" />
+  <component name="ProjectLevelVcsManager">
+    <ConfirmationsSetting value="1" id="Add" />
+  </component>
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "Cargo.Test.executor": "Run",
+    "Cargo.clean.executor": "Run",
+    "Cargo.debug.executor": "Run",
+    "Cargo.qemu-debug.executor": "Run",
+    "Cargo.qemu.executor": "Run",
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "Remote Debug.Start Debugger.executor": "Debug",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "RunOnceActivity.rust.reset.selective.auto.import": "true",
+    "RunOnceActivity.typescript.service.memoryLimit.init": "true",
+    "git-widget-placeholder": "main",
+    "last_opened_file_path": "/home/fabian/Lehre/HeineOS/media",
+    "nodejs_package_manager_path": "npm",
+    "org.rust.cargo.project.model.PROJECT_DISCOVERY": "true",
+    "org.rust.cargo.project.model.impl.CargoExternalSystemProjectAware.subscribe.first.balloon": "",
+    "org.rust.first.attach.projects": "true",
+    "settings.editor.selected.configurable": "preferences.lookFeel",
+    "vue.rearranger.settings.migration": "true"
+  }
+}]]></component>
+  <component name="RecentsManager">
+    <key name="CopyFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/media" />
+      <recent name="$PROJECT_DIR$/initrd" />
+      <recent name="$PROJECT_DIR$/kernel/src/demo/peanut-gb" />
+      <recent name="$PROJECT_DIR$/target/heineos_kernel/debug" />
+      <recent name="$PROJECT_DIR$/kernel/src/demo" />
+    </key>
+    <key name="MoveFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/kernel/src" />
+      <recent name="$PROJECT_DIR$/kernel" />
+    </key>
+  </component>
+  <component name="RustProjectSettings">
+    <option name="toolchainHomeDirectory" value="/usr/bin" />
+  </component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="08ee9731-146f-42cf-a59c-1f6ba37001fb" name="Changes" comment="" />
+      <created>1767774901025</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1767774901025</updated>
+      <workItem from="1767774902318" duration="6979000" />
+      <workItem from="1767782043234" duration="26000" />
+      <workItem from="1767782076714" duration="2336000" />
+      <workItem from="1767879247793" duration="5787000" />
+      <workItem from="1767955703130" duration="606000" />
+      <workItem from="1767964343516" duration="4256000" />
+      <workItem from="1768211353050" duration="106000" />
+      <workItem from="1768218089346" duration="1074000" />
+      <workItem from="1768293546816" duration="22349000" />
+      <workItem from="1768379770100" duration="23784000" />
+      <workItem from="1768469763844" duration="6632000" />
+      <workItem from="1768478200554" duration="821000" />
+      <workItem from="1768479028113" duration="8214000" />
+      <workItem from="1768552055140" duration="5881000" />
+      <workItem from="1768662107106" duration="213000" />
+      <workItem from="1768817443213" duration="2313000" />
+      <workItem from="1768898126014" duration="10927000" />
+      <workItem from="1768990439385" duration="4270000" />
+      <workItem from="1769075045999" duration="10955000" />
+      <workItem from="1769173717114" duration="267000" />
+      <workItem from="1769175168475" duration="3000" />
+      <workItem from="1769420169310" duration="5000" />
+      <workItem from="1769420336040" duration="4661000" />
+      <workItem from="1769427312318" duration="6622000" />
+      <workItem from="1769500343512" duration="14486000" />
+      <workItem from="1771876770694" duration="2156000" />
+      <workItem from="1772632019825" duration="48000" />
+      <workItem from="1773314971536" duration="8491000" />
+    </task>
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+  <component name="XDebuggerManager">
+    <watches-manager>
+      <configuration name="RsRemoteRunConfiguration">
+        <watch expression="mobj" />
+        <watch expression="thing" />
+      </configuration>
+    </watches-manager>
+  </component>
+  <component name="github-copilot-workspace">
+    <instructionFileLocations>
+      <option value=".github/instructions" />
+    </instructionFileLocations>
+    <promptFileLocations>
+      <option value=".github/prompts" />
+    </promptFileLocations>
+  </component>
+</project>
