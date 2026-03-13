@@ -1,0 +1,156 @@
+# Workspace root Makefile for HeineOS.
+# This Makefile contains tasks for "cargo-make" to build the OS image and run it in QEMU.
+# It calls the appropriate tasks in the member crates to build the kernel and applications.
+#
+# Author: Fabian Ruhland, Heinrich Heine University Duesseldorf, 2026-01-07
+# License: GPLv3
+
+[env]
+IMAGE = "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}/HeineOS.img"
+BOOTLOADER_DIRECTORY = "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}/loader"
+INITRD_DIRECTORY = "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}/initrd"
+OVMF_URL = "https://retrage.github.io/edk2-nightly/bin/RELEASEX64_OVMF.fd"
+TOWBOOT_VERSION = "0.10.0"
+TOWBOOT_URL = "https://github.com/hhuOS/towboot/releases/download/v${TOWBOOT_VERSION}/towbootctl-v${TOWBOOT_VERSION}"
+LINKER = { source = "${CARGO_MAKE_RUST_TARGET_OS}", default_value = "ld", mapping = { "macos" = "x86_64-elf-ld" } }
+TAR = { source = "${CARGO_MAKE_RUST_TARGET_OS}", default_value = "tar", mapping = { "macos" = "gtar" } }
+QEMU_AUDIO_DEVICE = { source = "${CARGO_MAKE_RUST_TARGET_OS}", default_value = "pa", mapping = { "macos" = "coreaudio" } }
+
+[tasks.default]
+alias = "qemu"
+
+# Run HeineOS in QEMU.
+# Since this task depends on "image", the OS will be built before running QEMU.
+[tasks.qemu]
+command = "qemu-system-x86_64"
+dependencies = [ "image", "ovmf" ]
+args = [
+    # Base machine configuration
+    "-machine", "q35,pcspk-audiodev=audio0",
+    "-m", "512M",
+    "-bios", "RELEASEX64_OVMF.fd",
+    "-boot", "d",
+    "-vga", "std",
+    "-rtc", "base=localtime",
+    "-serial", "stdio",
+
+    # Hard disk drive configuration
+    "-drive", "driver=raw,if=none,id=boot,file.filename=${IMAGE}",
+    "-device", "ide-hd,drive=boot",
+
+    # Audio configuration (Using pulse audio for Linux)
+    "-audiodev", "id=audio0,driver=${QEMU_AUDIO_DEVICE}",
+
+    # Network configuration
+    "-nic", "model=rtl8139,id=rtl8139,hostfwd=udp::1797-:1797,hostfwd=tcp::1797-:1797",
+    "-object", "filter-dump,id=filter1,netdev=rtl8139,file=rtl8139.dump",
+]
+
+# Run HeineOS in QEMU with debugging enabled.
+# This task starts QEMU in a paused state and listens for a GDB connection on port 1234.
+[tasks.debug]
+command = "qemu-system-x86_64"
+dependencies = [ "debug-signal-vscode" ]
+args = [
+    # Base machine configuration
+    "-machine", "q35,pcspk-audiodev=audio0",
+    "-m", "512M",
+    "-bios", "RELEASEX64_OVMF.fd",
+    "-boot", "d",
+    "-vga", "std",
+    "-rtc", "base=localtime",
+    "-serial", "stdio",
+
+    # Hard disk drive configuration
+    "-drive", "driver=raw,if=none,id=boot,file.filename=${IMAGE}",
+    "-device", "ide-hd,drive=boot",
+
+    # Audio configuration (Using pulse audio for Linux)
+    "-audiodev", "id=audio0,driver=${QEMU_AUDIO_DEVICE}",
+
+    # Network configuration
+    "-nic", "model=rtl8139,id=rtl8139,hostfwd=udp::1797-:1797,hostfwd=tcp::1797-:1797",
+    "-object", "filter-dump,id=filter1,netdev=rtl8139,file=rtl8139.dump",
+
+    # Debugging configuration
+    "-S", "-gdb", "tcp::1234"
+]
+
+# Signal that QEMU is ready for a debugger to attach.
+# This is needed for debugging with VSCode.
+[tasks.debug-signal-vscode]
+command = "echo"
+args = [ "Ready to debug" ]
+dependencies = [ "image", "ovmf" ]
+
+# Get the OVMF firmware file.
+# This is the UEFI firmware used by QEMU to boot the virtual machine.
+[tasks.ovmf]
+command = "wget"
+args = [ "-N", "${OVMF_URL}" ]
+
+# Create the bootable HeineOS disk image using Towboot.
+# This task depends on the "link-members" task to ensure the kernel is built before creating the image.
+[tasks.image]
+cwd = "${BOOTLOADER_DIRECTORY}"
+command = "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}/towbootctl"
+args = [ "image", "--target", "${IMAGE}", "--", "-config", "towboot.toml"]
+dependencies = [ "link-members", "initrd", "towbootctl",  ]
+condition = { files_modified = { input = [
+    "${BOOTLOADER_DIRECTORY}/kernel.elf",
+    "${BOOTLOADER_DIRECTORY}/towboot.toml"
+], output = [
+    "${IMAGE}"
+] } }
+
+# Run the "link" task in all workspace members.
+# This will build the kernel and all applications.
+[tasks.link-members]
+run_task = { name = "link", fork = true }
+
+# Download the Towboot control utility if it does not exist.
+# This utility is used to create the bootable disk image.
+[tasks.towbootctl]
+script = '''
+wget -O towbootctl "${TOWBOOT_URL}-x86_64-linux"
+chmod +x towbootctl
+'''
+condition = { files_not_exist = [ "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}/towbootctl" ] }
+
+[tasks.towbootctl.mac]
+script = '''
+wget -O towbootctl "${TOWBOOT_URL}-macos"
+chmod +x towbootctl
+'''
+
+# Create the initial RAM disk (initrd), which contains our read-only filesystem.
+[tasks.initrd]
+cwd = "${INITRD_DIRECTORY}"
+script = '''
+${TAR} -cf "${BOOTLOADER_DIRECTORY}/initrd.tar" *
+'''
+dependencies = [ "link-members" ]
+condition = { files_modified = { input = [
+    "${INITRD_DIRECTORY}/*",
+], output = [
+    "${BOOTLOADER_DIRECTORY}/initrd.tar"
+] } }
+
+# Clean up generated files in the workspace.
+# Since this task depends on "clean-members", it will also run "cargo clean" in each member crate.
+[tasks.clean]
+dependencies = [ "clean-workspace", "clean-members" ]
+
+# Manually cleanup specific generated files in the workspace, that are not removed by "cargo clean".
+[tasks.clean-workspace]
+command = "rm"
+args = [ "-rf",
+    "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}/HeineOS.img",
+    "RELEASEX64_OVMF.fd",
+    "towbootctl"
+]
+
+# Clean up generated files in all workspace members.
+# This runs "cargo clean" in each member crate.
+[tasks.clean-members]
+run_task = { name = "clean", fork = true }
