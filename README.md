@@ -1,98 +1,205 @@
-# Aufgabe 3: Interrupts
+# Lesson 3: Interrupts
 
-## Lernziele
+## Learning Goals
 
-1. Funktionsweise der Interrupt Descriptor Table (IDT) verstehen
-2. Funktionsweise des Interrupt-Controllers verstehen
-2. Behandlung von Interrupts implementieren, am Beispiel der Tastatur
+1. Understand the functionality of the Interrupt Descriptor Table (IDT)
+2. Understand the functionality of the Programmable Interrupt Controller (PIC)
+3. Implement interrupt dispatching using the keyboard as the first interrupt-based device
 
-## A3.1: Interrupt Descriptor Table (IDT)
-In dieser Aufgabe soll die Interrupt Descriptor Table (IDT) erstellt und geladen werden.
+## Assignment 3.1: Interrupt Descriptor Table (IDT)
+In this assignment you will learn how to load the IDT and test it using manual interrupts.
 
-In der Datei `kernel/interrupts/idt.rs` ist bereits ein Großteil des Codes zu Erstellung einer IDT vorgegeben.
-Die IDT hat 256 Einträge, wobei jeder Eintrag auf eine Funktion verweist, die angesprungen werden soll, wenn der entsprechende Interrupt auftritt. In hhuTOS verweist jeder Eintrag auf die Funktion `int_disp()` aus `kernel/interrupts/intdispatcher.rs`, welche die weitere Verarbeitung der Interrupts vornimmt.
-Zusätzlich hat jeder Eintag noch einige Flags, die korrekt gesetzt werden müssen (`IdtEntry::options`).
+Most of the required code is already implemented in [kernel/interrupt/idt.rs](https://github.com/hhu-bsinfo/HeineOS/blob/lesson-3/kernel/src/interrupt/idt.rs).
+Our IDT has 256 entries, with each entry pointing to a function that should be called when the corresponding interrupt occurs.
+In HeineOS, all entries point to the same function `int_disp()` in [kernel/interrupt/dispatcher.rs](https://github.com/hhu-bsinfo/HeineOS/blob/lesson-3/kernel/src/interrupt/dispatcher.rs), which handles dispatching interrupts to their appropriate handlers (e.g., device drivers or exception handlers).
+Additionally, each entry has some flags that must be set correctly (`IdtEntry::options`).
 
-Implementieren Sie zunächst die Funktion `IdtEntry::new()`, welche einen neuen IDT-Eintrag erzeugen soll. Der Parameter `offset` repräsentiert dabei die Adresse der anzuspringenden Funktion und muss innerhalb des Eintrags auf drei einzelne Teile aufgeteilt werden (`IdtEntry::offset_low`, `IdtEntry::offset_mid`, `IdtEntry::offset_high`). Außerdem soll jeder Eintrag immer die Optionen `Present`, `DPL = 0` und `64-Bit Interrupt Gate` gesetzt haben. Details zum Aufbau eines IDT-Eintrags finden Sie im [OSDev Wiki](https://wiki.osdev.org/Interrupt_Descriptor_Table#Structure_on_x86-64).
+Your task is to implement the `IdtEntry::new()` function, which creates a new IDT entry.
+The parameter `offset` represents the address of the function to be called and must be split into three parts (`IdtEntry::offset_low`, `IdtEntry::offset_mid`, `IdtEntry::offset_high`).
+Furthermore, each entry must always have the options `Present`, `DPL = 0` and `64-Bit Interrupt Gate` set.
+For more information about the IDT entry structure, see the [OSDev Wiki](https://wiki.osdev.org/Interrupt_Descriptor_Table#Structure_on_x86-64).
 
-Laden Sie die IDT in `startup.rs` mit `idt::get_idt().load()`. Nun sollte bei jedem Interrupt die Funktion `int_disp()` aufgerufen werden. Um das zu testen, fügen Sie eine Ausgabe in die (noch leere) Funktion `int_disp()` ein. Hierfür soll `kprintln!()` und nicht `println!()` verwendet werden. Zudem sollte `kprintln!()` nicht in Anwendungscode genutzt werden. Hintergrund ist, dass die `kprintln()!` und `println!()` Makros intern einen Mutex verwenden, welcher eventuell während der Interrupt-Verarbeitung gerade durch die Anwendung gesperrt ist. In diesem Fall würde eine Verklemmung auftreten.
+Now load your IDT in `startup.rs` by calling `idt().load()`. Afterward, `int_disp()` should be called whenever an interrupt occurs.
+To test this, insert code to output a log message with the triggered interrupt number via the serial port in `int_disp()`.
+To manually trigger an interrupt, we can use the x86 instruction `int` in `startup.rs`:
 
-Um manuell einen Interrupt auszulösen können Sie die x86-Instruktion `int` in `startup.rs` verwenden: `unsafe { asm!("int 100"); }` sollte nun `int_disp()` mit dem Parameter `vector = 100` anspringen.
-
-*Hinweis: Unsere Interrupt Handler werden in `idt.rs` also `extern "x86-interrupt"` markiert um dem Rust-Compiler mizuteilen, dass es sich nicht um normale Funktionen handelt und der generierte Maschinencode etwas anders aussehen muss (z.B. `iret` statt `ret` um aus der Funktion zurückzukehren). Dieses Feature ist in Rust noch nicht stabil und muss daher manuell eingeschaltet werden. Dazu muss in der `startup.rs` oben die Zeile `#![feature(abi_x86_interrupt)]` eingefügt werden.*
-
-In folgenden Dateien muss Code implementiert werden: `kernel/interrupts/idt.rs`, `startup.rs`.
-
-## A3.2: Programmable Interrupt Controller (PIC)
-In dieser Aufgabe sollen Hardware Interrupts aktiviert und anhand der Tastatur getestet werden.
-
-Zunächst müssen die leeren Funktionen in `pic.rs` implementiert werden. 
-
-Anschliessend soll in `keyboard.rs` die Funktion `plugin` programmiert werden. Hier muss der IRQ der Tastatur am `PIC` mit `allow()` freigeschaltet werden. Die ISR `keyboard::trigger()` kann vorerst leer bleiben. Auch das Registrieren der ISR der Tastatur folgt später.
-
-In `startup.rs` muss die `init()` Funktion des PIC aufgerufen, sowie die ISR der Tastatur mit `keyboard::plugin()` registriert werden. Anschliessend müssen die Interrupts an der CPU mit `cpu::enable_int()` zugelassen werden.
-
-Wenn nun das System startet sollte bei jedem Drücken und Loslassen einer Taste eine Textmeldung von `int_disp()` zu sehen sein. Dies funktioniert allerdings nur einige wenige male (oder sogar nur ein einziges mal). Wenn die Zeichen nicht vom Tastaturcontroller abgeholt werden, läuft der Tastaturpuffer irgendwann voll. Sobald der Puffer voll ist, sendet der Tastaturcontroller keine Interrupts mehr.
-
-In folgenden Dateien muss Code implementiert werden: `kernel/interrupts/pic.rs`,
-`devices/keyboard.rs`, `startup.rs` und `kernel/interrupts/int_dispatcher.rs`.
-
-*Allgemeine Hinweise:*
-- *Während der Behandlung einer Unterbrechung braucht man sich um unerwünschte Interrupts nicht zu sorgen. Der Prozessor schaltet diese nämlich automatisch aus, wenn er mit der Behandlung beginnt, und lässt sie erst wieder zu, wenn die Unterbrechungsbehandlung beendet wird. Zudem nutzen wir nur einen Prozessor-Kern.*
-- *Die Interrupt-Verarbeitung kann nur funktionieren, wenn hhuTOS auch läuft. Sobald hhuTOS die main-Funktion verlässt, ist das Verhalten bei Auftreten eines Interrupts undefiniert. Ein Betriebssystem sollte eben nicht plötzlich enden :-)*
-
-
-**Beispielausgaben in `int_disp()`**:
-```
-Welcome to hhuTOS!
-Initializing heap allocator
-Initializing PIC
-Initializing interrupts
-int_disp: Interrupt 100!
-Initializing keyboard
-Enabling interrupts
-Boot sequence finished
-int_disp: Interrupt 33!
+```rust
+unsafe {
+    asm!("int 100");
+}
 ```
 
-## A3.3: Weiterleitung von Interrupts an die Geräte-Treiber
-In dieser Aufgabe soll eine Infrastruktur geschaffen werden, um Interrupts, welche in `int_disp()` (siehe Aufgabe A3.2) entgegengenommen werden, an eine zuvor registierte Interrupt-Service-Routine (ISR) in einem Treiber weiterzuleiten.
+This code should result in `int_disp()` being called with the parameter `vector = 100` and you should see your log message.
 
-Ein Treiber muss hierfür eine ISR implementieren und registrieren. Die Schnittstelle der ISR besteht „nur“ aus der `trigger()` Funktion. Zu beachten ist, dass der Interrupt-Dispatcher mit Vektor-Nummern arbeitet und nicht IRQ-Nummern wie der PIC.
+**Notes:**
+- *The IDT requires handler functions to be marked as `extern x86-interrupt`.
+This tells the compiler that these are not normal functions and the machine code to be generated needs to be slightly different (e.g., using `iret` instead of `ret` to return from the function).*
 
-Zur Verwaltung der ISR verwendet das Modul `intdispatcher` die dynamische Datenstruktur `Vec`, welche mit 256 Options, die den Wert `None` beinhalten, gefüllt wird. Dies erlaubt es in `register()` eine ISR eines Treibers (Schnittstelle definiert in `isr`) an einem gegebenen Index zu speichern. Leider geht dies in Rust nicht mit einem Array statischer Größe. 
+## Assignment 3.2: Programmable Interrupt Controller (PIC)
+Now that the basic interrupt handling is implemented, we can move on to activating hardware interrupts and test them via the keyboard.
 
-Die Funktion `report()` soll von `int_disp()` aufgerufen werden, um die Funktion `trigger()` einer registrierten ISR-Funktion aufrufen, sofern vorhanden. Falls keine ISR registriert wurde, also `None` eingetragen ist, so soll eine Fehlermeldung ausgegeben und das System gestoppt werden. Entfernen Sie nun unbedingt den manuellen Test-Interrupt in `startup.rs`, da es sonst zu genau diesem Fall kommt.
+Start by implementing the empty functions in [kernel/device/pic.rs](https://github.com/hhu-bsinfo/HeineOS/blob/lesson-3/kernel/src/device/pic.rs) (`allow()`, `forbid()` and `status()`).
+Afterward, complement your existing keyboard driver with the additional code given in [keyboard.rs](https://github.com/hhu-bsinfo/HeineOS/blob/lesson-3/kernel/src/device/keyboard.rs) and [key.rs](https://github.com/hhu-bsinfo/HeineOS/blob/lesson-3/kernel/src/device/key.rs).
+You should now implement the `plugin()` function in `keyboard.rs` to enable the keyboard IRQ on the PIC.
+The interrupt service routine (ISR) of the keyboard can be left empty for now, and its registration with the interrupt dispatcher will also be done later.
 
-Um `report()` aufzurufen muss der Mutex um `INT_VECTORS` gelocked werden. Normalerweise ist es keine gute Idee, während eines Interrupts ein Lock zu holen, da es zu einer Verklemmung kommt falls das Lock bereits vergeben ist. In diesem Fall würde der Interrupt Handler nie zurückkehren und das Betriebssystem hängen bleiben (Gleiche Problematik wie bei `println!()`/`kprintln!()`). Um das zu verhindern, sollten alle Interrupt Handler registriert werden, bevor die Interrupts mit `cpu::enable_int()` eingeschaltet werden.
+Information on programming the PIC is available in the [OSDev Wiki](https://wiki.osdev.org/8259_PIC) and a detailed description of the chip is given in [8259A.pdf](https://github.com/hhu-bsinfo/HeineOS/blob/main/slides/8259A.pdf).
 
-Im Modul `keyboard` muss die Funktion `plugin()` erweitert werden und eine Referenz auf ein Funktionsobjekt `KeyboardISR` mithilfe von `register()` (im Modul `intdispatcher`) registrieren. Die für die Tastatur notwendige Vektor-Nummer ist in `intdispatcher::InterruptVector` definiert. 
+Now call the PIC's `init()` function in `startup.rs` and allow the keyboard interrupt with `keyboard::plugin()`.
+Finally, call `cpu::enable_int()` to enable hardware interrupts.
 
-Des Weiteren soll eine Text-Ausgabe in die Funktion `trigger()` eingebaut werden, um zu prüfen, ob die Tastaturinterrupts hier ankommen. Auch hier soll für Textausgaben `kprintln!()` verwendet werden.
+When you now boot your operating system, you should see a log message from `int_disp()` whenever you press or release a key on the keyboard.
+However, this only works a few times (or even only a single time) before the keyboard buffer is filled up.
+Once the buffer is full, the keyboard controller will not send any more interrupts.
+This will be fixed in the next assignment by reading scancodes from the keyboard in its interrupt handler.
 
-In folgenden Dateien muss Code implementiert werden: `devices/keyboard.rs`, `kernel/interrupts/intdispatcher.rs` und `startup.rs`.
+An example logging output of HeineOS after this assignment could look like this:
 
-**Beispielausgaben in `keyboard::trigger()`**:
 ```
-Welcome to hhuTOS!
-Initializing heap allocator
-Initializing PIC
-Initializing interrupts
-Initializing keyboard
-Enabling interrupts
-Boot sequence finished
-int_disp: Interrupt 33!
-keyboard::trigger called!
+[0.000][INF][boot.rs@085] Welcome to HeineOS!
+[0.000][DBG][boot.rs@161] EFI image is located at: 0x1f016498
+[0.000][DBG][boot.rs@177] EFI system table is located at: 0x1f5ec018
+[0.000][INF][boot.rs@187] Exiting UEFI boot services...
+[0.000][DBG][impl_.rs@352] Boot services are exited. Memory map won't be freed using the UEFI boot services allocator.
+[0.000][INF][boot.rs@096] Initializing heap allocator
+[0.000][INF][list.rs@066] List allocator initialized: 0x1b14000 - 0x2b14000 (Size: 16777216 bytes)
+[0.000][INF][boot.rs@103] Initializing IDT
+[0.000][INF][boot.rs@106] Initializing PIC
+[0.000][INF][boot.rs@109] Initializing keyboard
+[0.000][INF][boot.rs@109] Enabling interrupts
+[0.000][INF][boot.rs@112] Boot sequence finished
+[0.000][DBG][dispatcher.rs@085] Handling interrupt vector 33
 ```
 
-## A3.4: Tastaturabfrage per Interrupt
-Nun soll die Funktion `trigger()` in `keyboard` implementiert werden. Bei jedem Interrupt soll `key_hit_irq()` aufgerufen, ein Byte eingelesen werden und geprüft werden, ob ein Zeichen erfolgreich dekodiert wurde. Wenn dies der Fall ist, so soll der ASCII-Code des Zeichens in die neue globale Variable `KEYBOARD_BUFFER` eingereiht werden. Dabei handelt es sich um eine Queue, auf welche Anwendungen später mit `keyboard::get_key_buffer()` zugreifen und Tasten auslesen können. In `library/input.rs` sind zwei Beispielfunktionen die `keyboard::get_key_buffer()` verwenden. Für die Queue verwenden wir die Crate [nolock](https://lib.rs/crates/nolock), welche Datenstrukturen zur Verfügung stellt, die ohne Locks auskommen und trotzdem konkurriernde Zugriffe unterstützen. Solche Strukturen eignen sich perfekt für die Interruptverarbeitung, da wir ja innerhalb eines Interrupt Handlers normalerweise keine Locks holen dürfen.
+**Notes:**
+- *During the handling of an interrupt, you do not need to worry about unwanted other interrupts.
+The processor will automatically disable hardware interrupts when it starts handling the interrupt, and will only enable them again when the interrupt handler routine returns.
+Furthermore, we only use one processor core.*
+- *Be aware that interrupt handling can only work correctly while HeineOS is still running. You should never return from the `main()` function. An operating system does not just end like a normal program does :-)*  
+![One does not simply return from main() in OS development](https://i.imgflip.com/an114v.jpg)
 
-In `trigger()` muss die globale Variable `KEYBOARD` gelocked werden, damit `key_hit_irq()` mit einer mutable self Referenz aufgerufen werden kann. Das ist in Ordnung, da die gesamte Tastenverarbeitung in `trigger()` stattfindet und `KEYBOARD` an keiner anderen Stelle mehr gelocked wird.
+## Assignment 3.3: Forwarding interrupts to device drivers
+In this assignment, we will create an infrastructure to forward interrupts from `int_disp()` to previouisly registered interrupt service routines (ISRs) from device drivers.
 
-Bauen Sie nun alle bisherigen Demos so um, dass sie nicht mehr `key_hit()` verwenden um auf einen Tastendruck zu warten, sondern stattdessen Tasten aus dem `KEYBOARD_BUFFER` abholen. Die Funktion `key_hit()` kann nun nicht mehr verwendet werden und sollte gelöscht werden.
+To achieve this, a driver must implement the [ISR](https://github.com/hhu-bsinfo/HeineOS/blob/lesson-3/kernel/src/interrupt/isr.rs) trait and register it with the interrupt dispatcher.
+The `ISR` trait consists of only a single function named `trigger()`, which should be called by `int_disp()` when the appropriate interrupt occurs.
+Keep in mind that the interrupt dispatcher works with *vector numbers* instead of *IRQ numbers* like the PIC.
+The first 32 interrupt vectors (0–31) are reserved for CPU exceptions. `Pic::init()` maps hardware interrupts to the vector numbers 32–47.
+For example, the keyboard uses IRQ 1, which corresponds to interrupt vector 33.
 
-*Hinweise:*
-- *In `key_hit_irq()` sollte zumindest ein Byte eingelesen werden, da ansonsten keine weitere Interrupts von der Tastatur durchkommen.*
-- *Die PS/2-Maus hängt ebenfalls am Keyboard-Controller, verwendet aber IRQ12. Da wir keinen Handler für IRQ12 haben, kann es sein, dass wenn IRQ1 auftritt noch Daten von der Maus abzuholen sind. Dies können Sie anhand des `AUXB`-Bits im Statusregister erkennen.*
-- *Ferner tritt unter Qemu manchmal direkt ein IRQ1 nach dem Start auf, ohne eine Tastatureingabe. Das ist auf echter Hardware nicht der Fall. Daher unter Qemu bitte ignorieren.*
+The `interrupt::dispatcher` module stores the ISRs in a `Vec`, which is initialized with 256 `Option` instances of the value `None`.
+This allows us to register the ISR of a driver at a given index using the `IntVectors::register()` function.
+
+The function `IntVectors::report()` should be called from `int_disp()` to call the `trigger()` function of a previously registered ISR (if existing).
+If no ISR is registered for the given interrupt vector, an error message should be printed and the system should be stopped (i.e., `panic!()`).
+Remove the manual test interrupt in `startup.rs` as it would otherwise cause this error.
+
+To call `IntVectors::report()` safely, the `SpinLock` wrapping the `INT_VECTORS` global variable must be acquired.
+Usually, it is a bad idea to acquire a lock while an interrupt is being handled, as it may cause a deadlock if the lock is already acquired.
+To prevent this, all interrupt handlers should already be registered before the interrupts are enabled with `cpu::enable_int()`.
+
+The `keyboard::plugin()` function should now be extended to register an instance of `KeyboardISR` with the interrupt dispatcher.
+The corresponding vector number is defined in the `InterruptVector` enum in `dispatcher.rs`.
+Furthermore, the keyboard interrupt handler should now log a message via the serial port whenever it is triggered.
+
+Finally, initialize `INT_VECTORS` in `startup.rs` by calling `init_interrupt_dispatcher()`.
+
+An example logging output of HeineOS after this assignment could look like this:
+
+```
+[0.000][INF][boot.rs@085] Welcome to HeineOS!
+[0.000][DBG][boot.rs@161] EFI image is located at: 0x1f016498
+[0.000][DBG][boot.rs@177] EFI system table is located at: 0x1f5ec018
+[0.000][INF][boot.rs@187] Exiting UEFI boot services...
+[0.000][DBG][impl_.rs@352] Boot services are exited. Memory map won't be freed using the UEFI boot services allocator.
+[0.000][INF][boot.rs@096] Initializing heap allocator
+[0.000][INF][list.rs@066] List allocator initialized: 0x1b12000 - 0x2b12000 (Size: 16777216 bytes)
+[0.000][INF][boot.rs@100] Initializing interrupt dispatcher
+[0.000][INF][boot.rs@103] Initializing IDT
+[0.000][INF][boot.rs@106] Initializing PIC
+[0.000][INF][boot.rs@109] Initializing keyboard
+[0.000][INF][boot.rs@112] Enabling interrupts
+[0.000][INF][boot.rs@112] Boot sequence finished
+[0.000][DBG][dispatcher.rs@085] Handling interrupt vector 33
+[0.000][DBG][keyboard.rs@152] Keyboard interrupt handler triggered
+```
+
+## Assignment 3.4: Query key events using interrupts
+As the final step in this lesson, the keyboards interrupt handler should now read all pending scancodes from the keyboard by calling `Keyboard::try_read_next_byte()`.
+Furthermore, the read bytes should be decoded using `Keyboard::decode_byte()` and if a key event has been successfully decoded, it should be stored inside the global key event queue `KEYBOARD_BUFFER`.
+This queue stores all key events decoded during interrupt handling for later use. It can be accessed by demos using the `keyboard::keyboard_buffer()` function.
+The queue implementation is provided by the crate [nolock](https://lib.rs/crates/nolock), which contains data structures that are thread-safe without using locks.
+Thus, they are perfect for use in interrupt handlers, where locks are not allowed. A dependency to this crate is added in the [Cargo.toml](https://github.com/hhu-bsinfo/HeineOS/blob/lesson-3/kernel/Cargo.toml) file.
+
+However, we still need to lock the global `KEYBOARD` instance in `KeyboardISR::trigger()` to be able to call `Keyboard::try_read_next_byte()`.
+This is fine, as the whole key handling process is now fully handled by the interrupt handler. No other code in your operating system should access the `KEYBOARD` instance anymore (you can even make it private by removing the `pub` keyword).
+
+Replace any calls in your demo code to `Keyboard::poll_key_event()` and `Keyboard::poll_key_press()` by corresponding function calls from `KeyEventQueue`.
+You can even delete the two functions from `keyboard.rs` if you want.
+
+Furthermore, the new file [library/input.rs](https://github.com/hhu-bsinfo/HeineOS/blob/lesson-3/kernel/src/library/input.rs) provides convenience functions for reading ASCII characters from the keyboard buffer.
+As your last task in this assignment, implement the function `input::read_char()` to wait for a key press that produces a printable ASCII character and return it.
+
+**Notes:**
+- *Usually, at least one byte should be readable from the keyboard buffer during interrupt handling.
+However, sometimes an IRQ1 is triggered directly after booting in QEMU, even without any key press.
+In this case, the `KeyboardStatus::OUTPUT_BUFFER_FULL` bit is not set in the status register.
+Our `try_read_next_byte()` should already handle this case correctly.*
+- *The PS/2 mouse is also handled by the keyboard controller but uses IRQ12.
+Since we do not have a handler for IRQ12, there may be pending data from the mouse when handling IRQ1.
+This can be detected by checking the `KeyboardStatus::AUXILIARY_DEVICE` bit in the status register. Such data should be discarded.*
+
+## Optional Assignment: Kernel Options
+Similar to program arguments for normal applications, the bootloader can pass a string with user-defined options to our kernel.
+This is useful for configuring the operating system.
+
+### Setting the Log Level
+
+In this assignment, we want to allow the user to set the kernel's log level via the bootloader's command line.
+To enable this, open [loader/towboot.toml](https://github.com/hhu-bsinfo/HeineOS/blob/lesson-1/loader/towboot.toml) and add new line containing `argv = "log_level=DBG" under `[entries.heineos]`.
+For example, your towboot configuration file should now look like this:
+
+```
+[entries]
+  [entries.heineos]
+    name = "HeineOS"
+    image = "kernel.elf"
+    modules = [ { image = "initrd.tar", argv = "initrd.tar" } ]
+    argv = "log_level=DBG"
+```
+
+Now, in your `main()` function, you can use the following code to check for the presence of command line options:
+
+```rust
+if let Some(cmdline) = multiboot.find_tag::<multiboot::CommandLineTag>(multiboot::TagType::CommandLine) {
+    let command_line = cmdline.as_str();
+    info!("Command line: '{}'", command_line);
+}
+```
+
+This should print the command line string to the serial port. Next, you can parse the command line string to extract the given log level.
+The function `LevelFilter::from_str()` can be used to convert a string (e.g., `info` or `debug`) to the corresponding `LevelFilter` enum value.
+
+Finally, call `log::set_max_level()` with the extracted value to set the maximum log level for the kernel.
+If you now boot your operating system with the command line option `log_level=info`, you should see only log messages with level `info` or higher.
+All `debug!()` and `trace!()` messages will be ignored. You can even turn off logging completely with `log_level=off`.
+
+### Logging to the terminal
+
+While outputting log messages to the serial port is useful when working with QEMU, it can be cumbersome when working with real hardware.
+Oftentimes, a modern computer does not have a serial port exposed, and even if it does, you still need another computer with a serial port to connect it to and view the output.
+For this scenario, it would be much more convenient to output log messages to the terminal instead, so they can be viewed directly on the screen.
+
+A first attempt at this is straightforward: Edit the `logger::log()` function in [kernel/src/logger.rs](https://github.com/hhu-bsinfo/HeineOS/blob/lesson-1/kernel/src/logger.rs) to not only write the given message to the serial port, but also to the terminal using `print!()` or `println!()`.
+However, as your operating system will get more complex over time, the number of log messages during boot may become quite large, and printing them to the terminal might slow down the boot process.
+It would be nice if we could enable or disable this feature via a command line option.
+
+To achieve this, we first need to implement functionality to turn terminal logging on or off.
+This can be done by adding a new variable to the `Logger` struct [kernel/src/logger.rs](https://github.com/hhu-bsinfo/HeineOS/blob/lesson-1/kernel/src/logger.rs) with the type `AtomicBool`.
+This variable will be used to toggle terminal logging on and off. Furthermore, implement a new function `Logger::enable_terminal_logging(&self, enabled: bool)` to set the value of this variable.
+*Notice that we do not need a mutable reference to `self` here, as we use an atomic variable, which is inherently thread-safe and can be set by using a const reference.*
+
+Finally, you can introduce a new command line option to enable or disable terminal logging (e.g., `log_to_terminal=true`).
+If the option is present, parse it as you did for the log level and call `Logger::enable_terminal_logging()` with the corresponding value.
+
+![Terminal logging](https://github.com/hhu-bsinfo/HeineOS/blob/main/media/lesson-3/logging.png)
