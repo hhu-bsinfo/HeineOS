@@ -1,25 +1,26 @@
-/* ╔═════════════════════════════════════════════════════════════════════════╗
-   ║ Module: pcspk                                                           ║
-   ╟─────────────────────────────────────────────────────────────────────────╢
-   ║ Descr.: Implementation for beep sound using the pc speaker. Works in    ║
-   ║         qemu only if started with the correct audio settings.           ║
-   ╟─────────────────────────────────────────────────────────────────────────╢
-   ║ Author:  Michael Schoettner, HHU, 22.9.2016                             ║
-   ╚═════════════════════════════════════════════════════════════════════════╝
-*/
-#![allow(dead_code)]
+/*
+ * Play beep sounds via the classic PC speaker.
+ * The initial implementation programs the PIT directly.
+ * Once we have an interrupt-based driver for the PIT,
+ * we can simplify the PC speaker code to rely on the global system time instead.
+ *
+ * Author: Michael Schoetter, Heinrich Heine University Duesseldorf, 2016-09-22
+ *         Fabian Ruhland, Heinrich Heine University Duesseldorf, 2026-03-18
+ * License: GPLv3
+ */
 
-use spin::Mutex;
-use crate::kernel::cpu;
-use crate::kernel::cpu::IoPort;
+use crate::device::cpu::IoPort;
+use crate::library::spinlock::Spinlock;
 
-pub static SPEAKER: Mutex<Speaker> = Mutex::new(Speaker::new());
+pub static SPEAKER: Spinlock<Speaker> = Spinlock::new(Speaker::new());
 
-// Ports
-const PORT_CTRL: u16 = 0x43;
-const PORT_DATA0: u16 = 0x40;
-const PORT_DATA2: u16 = 0x42;
-const PORT_PPI: u16 = 0x61;
+/// Driver struct for the PC speaker.
+pub struct Speaker {
+    pit_ctrl_port: IoPort,
+    pit_data0_port: IoPort,
+    pit_data2_port: IoPort,
+    ppi_port: IoPort,
+}
 
 // Frequency of musical notes
 // (Our OS does not really support floating point, so we convert the numbers to usize)
@@ -63,62 +64,57 @@ pub const A2X: usize = 923.33 as usize;
 pub const B2: usize = 987.77 as usize;
 pub const C3: usize = 1046.50 as usize;
 
-pub struct Speaker {
-    pit_ctrl_port: IoPort,
-    pit_data0_port: IoPort,
-    pit_data2_port: IoPort,
-    ppi_port: IoPort,
+#[repr(u16)]
+/// I/O port addresses for the PC speaker.
+enum SpeakerRegister {
+    Data0 = 0x40,
+    Data2 = 0x42,
+    Control = 0x43,
+    PPI = 0x61,
 }
+
+/// Base frequency of the PIT (Programmable Interval Timer) in Hz.
+const PIT_FREQUENCY: usize = 1193180;
 
 impl Speaker {
     /// Create a new Speaker instance.
     pub const fn new() -> Self {
         Speaker {
-            pit_ctrl_port: IoPort::new(PORT_CTRL),
-            pit_data0_port: IoPort::new(PORT_DATA0),
-            pit_data2_port: IoPort::new(PORT_DATA2),
-            ppi_port: IoPort::new(PORT_PPI),
+            pit_ctrl_port: IoPort::new(SpeakerRegister::Control as u16),
+            pit_data0_port: IoPort::new(SpeakerRegister::Data0 as u16),
+            pit_data2_port: IoPort::new(SpeakerRegister::Data2 as u16),
+            ppi_port: IoPort::new(SpeakerRegister::PPI as u16),
         }
     }
 
     /// Play a specific frequency for a given amount of time (milliseconds).
     pub fn play(&mut self, frequency: usize, duration: usize) {
-
-        /* Hier muss Code eingefuegt werden */
-
+        todo!("Speaker::play() is not implemented yet.")
     }
 
     /// Turn on the speaker.
     /// The played tone is dependent on counter 2 of the PIT.
     pub fn on(&mut self) {
-
-        /* Hier muss Code eingefuegt werden */
-
+        todo!("Speaker::on() is not implemented yet.")
     }
 
     /// Turn off the speaker.
     pub fn off(&mut self) {
-
-        /* Hier muss Code eingefuegt werden */
-
+        todo!("Speaker::off() is not implemented yet.")
     }
 
     /// Return the current value of the PIT counter (16-bit).
     /// Used by `delay()` to check if the counter has reached 0 or has been reloaded.
     fn read_counter(&mut self) -> u16 {
-
-        /* Hier muss Code eingefuegt werden */
-
+        todo!("Speaker::read_counter() is not implemented yet.")
     }
-    
+
     /// Wait for a given amount of time in milliseconds using counter 0 of the PIT.
     /// Mode 2 (rate generator) with a reload value of 1193 (0x04a9) is used.
     /// This means that the counter will count down from 1193 to 0 and then reload itself.
     /// Counting from 1193 to 0 takes 1ms.
     fn delay(&mut self, duration: usize) {
-
-        /* Hier muss Code eingefuegt werden */
-
+        todo!("Speaker::delay() is not implemented yet.")
     }
 }
 
@@ -126,7 +122,7 @@ impl Speaker {
 /// Kévin Rapaille, August 2013, https://gist.github.com/XeeX/6220067
 pub fn tetris() {
     let mut speaker = SPEAKER.lock();
-    
+
     speaker.play(658, 125);
     speaker.play(1320, 500);
     speaker.play(990, 250);
@@ -249,7 +245,7 @@ pub fn tetris() {
 /// https://www.kirrus.co.uk/2010/09/linux-beep-music
 pub fn aerodynamic() {
     let mut speaker = SPEAKER.lock();
-    
+
     speaker.play(587, 122);
     speaker.play(370, 122);
     speaker.play(493, 122);
