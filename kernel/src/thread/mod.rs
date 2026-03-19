@@ -1,4 +1,3 @@
-
 pub mod thread;
 pub mod scheduler;
-pub mod idle_thread;
+mod idle_thread;

@@ -1,6 +1,5 @@
 use alloc::boxed::Box;
 use core::fmt;
-use core::fmt::Display;
 
 /// Generic list element for our linked queue.
 pub struct Node<T> {
@@ -70,14 +69,11 @@ impl<T> LinkedQueue<T> {
     pub fn remove<F>(&mut self, f: F) -> bool
     where F: Fn(&T) -> bool
     {
-
-        /* Hier muss Code eingefuegt werden */
-
-        false
+        todo!("LinkedQueue::remove() is not implemented yet.")
     }
 }
 
-impl<T: Display> Display for LinkedQueue<T> {
+impl<T: fmt::Display> fmt::Display for LinkedQueue<T> {
     fn fmt(&self, w: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         write!(w, "[")?;
 
