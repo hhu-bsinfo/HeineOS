@@ -1,29 +1,28 @@
-/* ╔═════════════════════════════════════════════════════════════════════════╗
-   ║ Module: scheduler                                                       ║
-   ╟─────────────────────────────────────────────────────────────────────────╢
-   ║ Descr.: A basic round-robin scheduler for cooperative threads.          ║
-   ║         No priorities supported.                                        ║
-   ╟─────────────────────────────────────────────────────────────────────────╢
-   ║ Autor:  Michael Schoettner, 15.05.2023                                  ║
-   ╚═════════════════════════════════════════════════════════════════════════╝
-*/
+/*
+ * A basic round-robin scheduler for cooperative threads.
+ * Priorities are not supported.
+ *
+ * Author: Michael Schoettner, Heinrich Heine University Duesseldorf, 2023-05-15
+ *         Fabian Ruhland, Heinrich Heine University Duesseldorf, 2026-01-15
+ * License: GPLv3
+ */
+
 use alloc::boxed::Box;
-use alloc::vec::Vec;
 use core::fmt::Display;
 use core::{fmt, ptr};
-use core::sync::atomic::AtomicUsize;
-use spin::{Mutex, Once};
-use crate::kernel::threads::idle_thread::idle_thread;
-use crate::kernel::threads::thread;
-use crate::kernel::threads::thread::Thread;
+use crate::allocator;
+use crate::library::once::Once;
 use crate::library::queue::LinkedQueue;
+use crate::library::spinlock::Spinlock;
+use crate::thread::idle_thread::idle_thread;
+use crate::thread::thread::Thread;
 
 /// Global scheduler instance
 static SCHEDULER: Once<Scheduler> = Once::new();
 
 /// Global access to the scheduler.
-pub fn get_scheduler() -> &'static Scheduler {
-    SCHEDULER.call_once(|| { Scheduler::new() })
+pub fn scheduler() -> &'static Scheduler {
+    SCHEDULER.init(Scheduler::new)
 }
 
 /// Unlock the scheduler state.
@@ -35,7 +34,7 @@ pub fn get_scheduler() -> &'static Scheduler {
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn unlock_scheduler() {
     unsafe {
-        get_scheduler().state.force_unlock();
+        scheduler().state.force_unlock();
     }
 }
 
@@ -44,13 +43,13 @@ pub unsafe extern "C" fn unlock_scheduler() {
 /// The state is contained in its own struct so that it can be locked via a mutex.
 struct SchedulerState {
     active_thread: Option<Box<Thread>>,
-    ready_queue: LinkedQueue<Box<Thread>>,
+    ready_queue: LinkedQueue<Box<Thread>>
 }
 
 /// Represents the scheduler.
 /// It is round-robin-based and uses a queue to manage the threads.
 pub struct Scheduler {
-    state: Mutex<SchedulerState>,
+    state: Spinlock<SchedulerState>,
 }
 
 impl Scheduler {
@@ -61,15 +60,15 @@ impl Scheduler {
             active_thread: Some(Thread::new(idle_thread)),
             ready_queue: LinkedQueue::new(),
         };
-        
-        Scheduler { state:  Mutex::new(state) }
+
+        Scheduler { state: Spinlock::new(state) }
     }
 
     /// Get the ID of the currently active thread.
     pub fn get_active_tid(&self) -> usize {
         let state = self.state.lock();
-        
-        state.active_thread.as_ref().unwrap().get_id()
+
+        state.active_thread.as_ref().unwrap().id()
     }
 
     /// Start the scheduler.
@@ -84,7 +83,7 @@ impl Scheduler {
     /// Register a new thread in the ready queue.
     pub fn ready(&self, thread: Box<Thread>) {
         let mut state = self.state.lock();
-        
+
         state.ready_queue.enqueue(thread);
     }
 
@@ -96,11 +95,11 @@ impl Scheduler {
         let mut current = state.active_thread.take().unwrap();
         // The idle thread never exits, so there must be at least one thread in the queue.
         let next = state.ready_queue.dequeue().unwrap();
-            
+
         // Set the dequeued thread as the active thread,
         // overwriting the current one, which we want to exit.
         state.active_thread = Some(next);
-        
+
         unsafe {
             // Switch to the next thread.
             // `current` still contains the old thread we want to exit,
@@ -111,16 +110,12 @@ impl Scheduler {
 
     /// Yield the CPU and switch to the next thread in the ready queue.
     pub fn yield_cpu(&self) {
-
-        /* Hier muss Code eingefuegt werden */
-
+        todo!("Scheduler::yield_cpu() is not implemented yet.");
     }
 
     /// Kill the thread with the given ID by removing it from the ready queue.
     pub fn kill(&self, to_kill_id: usize) {
-
-        /* Hier muss Code eingefuegt werden */
-
+        todo!("Scheduler::kill() is not implemented yet.");
     }
 }
 
@@ -128,7 +123,7 @@ impl Display for Scheduler {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let state = self.state.lock();
         let active = state.active_thread.as_ref().unwrap();
-        
+
         write!(f, "active: {}, ready: {}", active, state.ready_queue)
     }
 }
