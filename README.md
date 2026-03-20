@@ -72,8 +72,11 @@ Lukas Lang - Pokémon Reimplementation (No Emulator!)
 Stephan Schmidt - Minesweeper
 <video src="https://github.com/user-attachments/assets/425e2f81-81b0-4255-96dc-edf32fc4a60c"></video>
 
+Max Richter - CGA Pong
+<video src="https://github.com/user-attachments/assets/c36369b6-7603-46fc-a75e-e7a561addc48"></video>
+
 ### 2026
 In 2026, hhuTOS was renamed to HeineOS.
-It now targets modern 64-bit x86_64-computers with a UEFI BIOS and uses a UEFI-provided framebuffer right from the start, instead of CGA text mode.
+It now works on modern 64-bit x86_64-computers with a UEFI BIOS and uses a framebuffer (provided by the bootloader) right from the start, instead of CGA text mode.
 
 *Hall of Fame entries will follow soon.*
