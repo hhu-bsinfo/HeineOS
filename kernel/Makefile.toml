@@ -1,0 +1,76 @@
+[env.development]
+BUILD_DIRECTORY = "${CARGO_MAKE_CRATE_TARGET_DIRECTORY}/heineos_kernel/debug"
+CARGO_BUILD_OPTION = "--lib"
+CC_OPT_LEVEL = "0"
+
+[env.production]
+BUILD_DIRECTORY = "${CARGO_MAKE_CRATE_TARGET_DIRECTORY}/heineos_kernel/release"
+CARGO_BUILD_OPTION = "--release"
+CC_OPT_LEVEL = "3"
+
+[env]
+CARGO_MAKE_EXTEND_WORKSPACE_MAKEFILE = true
+CARGO_CFG_TARGET_FAMILY = "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}/heineos_kernel.json"
+SOURCE_DIRECTORY = "${CARGO_MAKE_WORKING_DIRECTORY}/src"
+LINKER_FILE = "${CARGO_MAKE_WORKING_DIRECTORY}/link.ld"
+RUST_OBJECT = "${BUILD_DIRECTORY}/lib${CARGO_MAKE_PROJECT_NAME}.a"
+ASM_OBJECT = "${BUILD_DIRECTORY}/boot.o"
+KERNEL = "${BOOTLOADER_DIRECTORY}/${CARGO_MAKE_PROJECT_NAME}.elf"
+TARGET_CPU = "x86-64"
+RUSTFLAGS="-C target-cpu=${TARGET_CPU}"
+CC = { source = "${CARGO_MAKE_RUST_TARGET_OS}", default_value = "gcc", mapping = { "macos" = "x86_64-elf-gcc" } }
+AR = { source = "${CARGO_MAKE_RUST_TARGET_OS}", default_value = "ar", mapping = { "macos" = "x86_64-elf-ar" } }
+
+[tasks.default]
+alias = "link"
+
+[tasks.compile]
+command = "cargo"
+args = [ "build", "-Z", "build-std=core,alloc", "-Z", "build-std-features=compiler-builtins-mem", "-Z", "json-target-spec", "--target", "${CARGO_CFG_TARGET_FAMILY}", "${CARGO_BUILD_OPTION}", "--features", "unifont" ]
+condition = { files_modified = { input = [
+    "${CARGO_MAKE_WORKING_DIRECTORY}/Cargo.toml", "${SOURCE_DIRECTORY}/**/*.rs"
+], output = [
+    "${BUILD_DIRECTORY}/lib${CARGO_MAKE_PROJECT_NAME}*"
+] } }
+
+[tasks.build-asm]
+command = "nasm"
+args = [ "-f", "elf64", "-w+error=label-redef-late", "-o", "${ASM_OBJECT}", "${SOURCE_DIRECTORY}/boot.asm" ]
+condition = { files_modified = { input = [
+    "${SOURCE_DIRECTORY}/boot.asm"
+], output = [
+    "${BUILD_DIRECTORY}/boot.o"
+] } }
+
+[tasks.link]
+command = "${LINKER}"
+args = [ "-n", "-T", "${LINKER_FILE}", "-o", "${KERNEL}", "${ASM_OBJECT}", "${BUILD_DIRECTORY}/peanut-gb.o", "${RUST_OBJECT}", "-z", "noexecstack" ]
+dependencies = [ "compile", "build-asm", "compile-peanut-gb" ]
+condition = { files_modified = { input = [
+    "${ASM_OBJECT}",
+    "${RUST_OBJECT}",
+    "${BUILD_DIRECTORY}/peanut-gb.o",
+    "${LINKER_FILE}"
+], output = [
+    "${KERNEL}"
+] } }
+
+[tasks.clean]
+command = "cargo"
+args = [ "clean" ]
+dependencies = [ "remove-kernel" ]
+
+[tasks.remove-kernel]
+command = "rm"
+args = [ "-f", "${KERNEL}" ]
+
+[tasks.compile-peanut-gb]
+command = "${CC}"
+cwd = "${BUILD_DIRECTORY}"
+args = [
+    # Compiler flags
+    "-c", "-nostdlib", "-ffreestanding", "-fno-stack-protector", "-fpic", "-std=gnu99", "-O${CC_OPT_LEVEL}", "-g", "-march=${TARGET_CPU}",
+
+    # Source files
+    "${SOURCE_DIRECTORY}/demo/lesson6/peanut-gb.c"
+]

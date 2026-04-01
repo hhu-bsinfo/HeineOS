@@ -1,0 +1,7 @@
+#
+# CAUTION: This is not meant as a replacement for your existing Cargo.toml
+#          It just contains additional code that you should copy into your own file.
+#
+
+[dependencies]
+tar-no-std = "0.4.2"
