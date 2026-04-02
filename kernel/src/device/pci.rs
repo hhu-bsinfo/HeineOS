@@ -1,7 +1,14 @@
+/*
+ * Code to access the PCI bus.
+ * The bus can be scanned for devices, and the configuration space of each device can be read and written.
+ *
+ * Author: Fabian Ruhland, Heinrich Heine University Duesseldorf, 2026-04-02
+ * License: GPLv3
+ */
 use alloc::vec::Vec;
-use spin::Once;
-use crate::kernel::cpu::IoPort;
-use crate::library::mutex::Mutex;
+use crate::device::cpu::IoPort;
+use crate::library::once::Once;
+use crate::library::spinlock::Spinlock;
 
 // PCI constants
 const MAX_DEVICES_PER_BUS: u8 = 32;
@@ -17,11 +24,11 @@ static PCI_BUS: Once<PciBus> = Once::new();
 
 /// Global access to the PCI bus.
 /// On its first call, it initializes the `PCI_BUS` instance and scans the PCI bus for devices.
-pub fn get_pci_bus() -> &'static PciBus {
-    PCI_BUS.call_once(|| {
+pub fn pci_bus() -> &'static PciBus {
+    PCI_BUS.init(|| {
         let mut pci = PciBus::new();
         pci.scan();
-        
+
         pci
     })
 }
@@ -29,7 +36,7 @@ pub fn get_pci_bus() -> &'static PciBus {
 /// Representation of the PCI bus.
 /// See the OSDev wiki for details: https://wiki.osdev.org/PCI
 pub struct PciBus {
-    registers: Mutex<PciBusRegisters>,
+    registers: Spinlock<PciBusRegisters>,
     devices: Vec<PciDevice>
 }
 
@@ -158,14 +165,14 @@ impl PciBus {
     /// Create a new PCI bus instance
     const fn new() -> Self {
         PciBus {
-            registers: Mutex::new(PciBusRegisters {
+            registers: Spinlock::new(PciBusRegisters {
                 config_address_port: IoPort::new(CONFIG_ADDRESS_PORT),
                 config_data_port: IoPort::new(CONFIG_DATA_PORT)
             }),
             devices: Vec::new()
         }
     }
-    
+
     /// Get an iterator over the PCI devices on the bus.
     pub fn iter(&self) -> impl Iterator<Item = &PciDevice> {
         self.devices.iter()
@@ -175,7 +182,7 @@ impl PciBus {
     /// The PCI host controller can itself be a multi-function device,
     /// with each function representing a unique "bus" in the PCI hierarchy.
     fn scan(&mut self) {
-        // Check header type of host controller. If it is a multi-function device,
+        // Check the header type of the host controller. If it is a multi-function device,
         // there are multiple host controllers available at bus 0, device 0, function 0-7.
         // Otherwise, there is only one host controller at bus 0, device 0, function 0.
         let header_type = self.read8(0, 0, 0, Register::HeaderType as u8);
@@ -313,35 +320,35 @@ impl PciDevice {
             function
         }
     }
-    
+
     /// Read an 8-bit value from the PCI configuration space at the specified offset relative to the device.
     pub unsafe fn read8(&self, offset: u8) -> u8 {
-        get_pci_bus().read8(self.bus, self.device, self.function, offset)
+        pci_bus().read8(self.bus, self.device, self.function, offset)
     }
 
     /// Write an 8-bit value to the PCI configuration space at the specified offset relative to the device.
     pub unsafe fn write8(&self, offset: u8, value: u8) {
-        get_pci_bus().write8(self.bus, self.device, self.function, offset, value);
+        pci_bus().write8(self.bus, self.device, self.function, offset, value);
     }
 
     /// Read a 16-bit value from the PCI configuration space at the specified offset relative to the device.
     pub unsafe fn read16(&self, offset: u8) -> u16 {
-        get_pci_bus().read16(self.bus, self.device, self.function, offset)
+        pci_bus().read16(self.bus, self.device, self.function, offset)
     }
 
     /// Write a 16-bit value to the PCI configuration space at the specified offset relative to the device.
     pub unsafe fn write16(&self, offset: u8, value: u16) {
-        get_pci_bus().write16(self.bus, self.device, self.function, offset, value);
+        pci_bus().write16(self.bus, self.device, self.function, offset, value);
     }
 
     /// Read a 32-bit value to the PCI configuration space at the specified offset relative to the device.
     pub unsafe fn read32(&self, offset: u8) -> u32 {
-        get_pci_bus().read32(self.bus, self.device, self.function, offset)
+        pci_bus().read32(self.bus, self.device, self.function, offset)
     }
 
     /// Write a 32-bit value to the PCI configuration space at the specified offset relative to the device.
     pub unsafe fn write32(&self, offset: u8, value: u32) {
-        get_pci_bus().write32(self.bus, self.device, self.function, offset, value);
+        pci_bus().write32(self.bus, self.device, self.function, offset, value);
     }
 
     /// Read the vendor ID of the PCI device.
@@ -353,37 +360,37 @@ impl PciDevice {
     pub fn read_device_id(&self) -> u16 {
         unsafe { self.read16(Register::DeviceId as u8) }
     }
-    
+
     /// Read the class code of the PCI device.
     pub fn read_class(&self) -> u8 {
         unsafe { self.read8(Register::Class as u8) }
     }
-    
+
     /// Read the subclass code of the PCI device.
     pub fn read_subclass(&self) -> u8 {
         unsafe { self.read8(Register::Subclass as u8) }
     }
-    
+
     /// Read the revision number of the PCI device.
     pub fn read_revision(&self) -> u8 {
         unsafe { self.read8(Register::Revision as u8) }
     }
-    
+
     /// Read the programming interface of the PCI device.
     pub fn read_programming_interface(&self) -> u8 {
         unsafe { self.read8(Register::ProgrammingInterface as u8) }
     }
-    
+
     /// Read the subsystem vendor ID of the PCI device.
     pub fn read_subsystem_vendor_id(&self) -> u16 {
         unsafe { self.read16(Register::SubsystemVendorId as u8) }
     }
-    
+
     /// Read the subsystem ID of the PCI device.
     pub fn read_subsystem_id(&self) -> u16 {
         unsafe { self.read16(Register::SubsystemId as u8) }
     }
-    
+
     /// Read the interrupt pin of the PCI device.
     pub fn read_interrupt_line(&self) -> u8 {
         unsafe { self.read8(Register::InterruptLine as u8) }
