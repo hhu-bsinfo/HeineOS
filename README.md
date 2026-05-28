@@ -88,6 +88,11 @@ to switch from ring 0 to ring 3 via the `iretq` instruction (there is no other w
 `Thread::switch_to_usermode()` must build a stack frame on the kernel stack, that looks exactly like an interrupt with privilege level change has occured.
 The stack frame must not contain an error code. This sould cause the `iretq` instruction to return into `Thread::kickoff_user_thread()` with the CPU running in ring 3.
 
+*CAUTION: At this point, the current thread is running on the kernel stack, while we want to build the stack frame on this exact same stack.
+This is not ideal, as may overwrite the current stack frame, which probably leads to a system crash.
+To avoid this, you should leave some safety margin on the stack.
+For example, instead of writing the stack frame to the top of the stack, you could start 1 KiB below the top of the stack.*
+
 Before you can actually run a thread in user mode, you need to call the new function `setup_initial_paging()`, given in [kernel/paging/pages.rs](https://github.com/hhu-bsinfo/HeineOS/blob/lesson-8/kernel/paging/pages.rs).
 The UEFI/bootloader has already set up initial page tables for us, with the whole memory mapped 1:1 (identity mapping).
 Because of this, we did not have to care about paging until now. However, the page tables are set up in a way that only the kernel is allowed to access memory.
