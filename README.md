@@ -15,7 +15,7 @@ In this assignment you will learn how to load the IDT and test it using manual i
 
 Most of the required code is already implemented in [kernel/interrupt/idt.rs](https://github.com/hhu-bsinfo/HeineOS/blob/lesson-3/kernel/src/interrupt/idt.rs).
 Our IDT has 256 entries, with each entry pointing to a function that should be called when the corresponding interrupt occurs.
-In HeineOS, all entries point to the same function `int_disp()` in [kernel/interrupt/dispatcher.rs](https://github.com/hhu-bsinfo/HeineOS/blob/lesson-3/kernel/src/interrupt/dispatcher.rs), which handles dispatching interrupts to their appropriate handlers (e.g., device drivers or exception handlers).
+In HeineOS, all entries point to the same function `dispatch_interrupt()` in [kernel/interrupt/dispatcher.rs](https://github.com/hhu-bsinfo/HeineOS/blob/lesson-3/kernel/src/interrupt/dispatcher.rs), which handles dispatching interrupts to their appropriate handlers (e.g., device drivers or exception handlers).
 Additionally, each entry has some flags that must be set correctly (`IdtEntry::options`).
 
 Your task is to implement the `IdtEntry::new()` function, which creates a new IDT entry.
@@ -23,8 +23,8 @@ The parameter `offset` represents the address of the function to be called and m
 Furthermore, each entry must always have the options `Present`, `DPL = 0` and `64-Bit Interrupt Gate` set.
 For more information about the IDT entry structure, see the [OSDev Wiki](https://wiki.osdev.org/Interrupt_Descriptor_Table#Structure_on_x86-64).
 
-Now load your IDT in `boot.rs` by calling `idt().load()`. Afterward, `int_disp()` should be called whenever an interrupt occurs.
-To test this, insert code to output a log message with the triggered interrupt number via the serial port in `int_disp()`.
+Now load your IDT in `boot.rs` by calling `idt().load()`. Afterward, `dispatch_interrupt()` should be called whenever an interrupt occurs.
+To test this, insert code to output a log message with the triggered interrupt number via the serial port in `dispatch_interrupt()`.
 To manually trigger an interrupt, we can use the x86 instruction `int` in `boot.rs`:
 
 ```rust
@@ -33,7 +33,7 @@ asm!("int 100");
 }
 ```
 
-This code should result in `int_disp()` being called with the parameter `vector = 100` and you should see your log message.
+This code should result in `dispatch_interrupt()` being called with the parameter `vector = 100` and you should see your log message.
 
 **Notes:**
 - *The IDT requires handler functions to be marked as `extern x86-interrupt`.
@@ -52,7 +52,7 @@ Information on programming the PIC is available in the [OSDev Wiki](https://wiki
 Now call the PIC's `init()` function in `boot.rs` and allow the keyboard interrupt with `keyboard::plugin()`.
 Finally, call `cpu::enable_int()` to enable hardware interrupts.
 
-When you now boot your operating system, you should see a log message from `int_disp()` whenever you press or release a key on the keyboard.
+When you now boot your operating system, you should see a log message from `dispatch_interrupt()` whenever you press or release a key on the keyboard.
 However, this only works a few times (or even only a single time) before the keyboard buffer is filled up.
 Once the buffer is full, the keyboard controller will not send any more interrupts.
 This will be fixed in the next assignment by reading scancodes from the keyboard in its interrupt handler.
@@ -83,10 +83,10 @@ An example logging output of HeineOS after this assignment could look like this:
   ![One does not simply return from main() in OS development](https://i.imgflip.com/an114v.jpg)
 
 ## Assignment 3.3: Forwarding interrupts to device drivers
-In this assignment, we will create an infrastructure to forward interrupts from `int_disp()` to previouisly registered interrupt service routines (ISRs) from device drivers.
+In this assignment, we will create an infrastructure to forward interrupts from `dispatch_interrupt()` to previouisly registered interrupt service routines (ISRs) from device drivers.
 
 To achieve this, a driver must implement the [ISR](https://github.com/hhu-bsinfo/HeineOS/blob/lesson-3/kernel/src/interrupt/isr.rs) trait and register it with the interrupt dispatcher.
-The `ISR` trait consists of only a single function named `trigger()`, which should be called by `int_disp()` when the appropriate interrupt occurs.
+The `ISR` trait consists of only a single function named `trigger()`, which should be called by `dispatch_interrupt()` when the appropriate interrupt occurs.
 Keep in mind that the interrupt dispatcher works with *vector numbers* instead of *IRQ numbers* like the PIC.
 The first 32 interrupt vectors (0–31) are reserved for CPU exceptions. `Pic::init()` maps hardware interrupts to the vector numbers 32–47.
 For example, the keyboard uses IRQ 1, which corresponds to interrupt vector 33.
@@ -94,7 +94,7 @@ For example, the keyboard uses IRQ 1, which corresponds to interrupt vector 33.
 The `interrupt::dispatcher` module stores the ISRs in a `Vec`, which is initialized with 256 `Option` instances of the value `None`.
 This allows us to register the ISR of a driver at a given index using the `IntVectors::register()` function.
 
-The function `IntVectors::report()` should be called from `int_disp()` to call the `trigger()` function of a previously registered ISR (if existing).
+The function `IntVectors::report()` should be called from `dispatch_interrupt()` to call the `trigger()` function of a previously registered ISR (if existing).
 If no ISR is registered for the given interrupt vector, an error message should be printed and the system should be stopped (i.e., `panic!()`).
 Remove the manual test interrupt in `boot.rs` as it would otherwise cause this error.
 
@@ -102,7 +102,7 @@ To call `IntVectors::report()` safely, the `Spinlock` wrapping the `INT_VECTORS`
 Usually, it is a bad idea to acquire a lock while an interrupt is being handled, as it may cause a deadlock if the lock is already acquired.
 The only other point in our kernel, where `INT_VECTORS` is being locked, is the `IntVectors::register()` function.
 Make sure to disable interrupts in `IntVectors::register()` when registering the ISR and enable them again before returning.
-This can be achieved using `cpu::without_interrupts()`. Now, we can be sure that the lock is not held when calling `IntVectors::report()` from `int_disp()`.
+This can be achieved using `cpu::without_interrupts()`. Now, we can be sure that the lock is not held when calling `IntVectors::report()` from `dispatch_interrupt()`.
 
 The `keyboard::plugin()` function should now be extended to register an instance of `KeyboardISR` with the interrupt dispatcher.
 The corresponding vector number is defined in the `InterruptVector` enum in `dispatcher.rs`.
