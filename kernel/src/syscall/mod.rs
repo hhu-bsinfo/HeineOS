@@ -1,3 +1,3 @@
-pub mod syscall_dispatcher;
+pub mod dispatcher;
 pub mod user_api;
 pub mod functions;

@@ -21,27 +21,22 @@ pub enum SyscallFunction {
 
 /// Test system call printing "Hello, World!" to the serial console.
 pub fn usr_hello_world() {
-    syscall0(SyscallFunction::HelloWorld);
+    unsafe { syscall0(SyscallFunction::HelloWorld); }
 }
 
-/*
- * Hier muss Code eingefuegt werden
- */
+// TODO: Implement further system calls
 
-/// Perform a system call with 0 arguments.
+/// Perform a system call with 0 parameters.
 #[inline(always)]
-pub fn syscall0(syscall: SyscallFunction) -> u64 {
+pub unsafe fn syscall0(syscall: SyscallFunction) -> u64 {
     let mut ret: u64;
     unsafe {
         asm!(
-            "int 0x80",
-            inlateout("rax") syscall as u64 => ret,
-            options(preserves_flags, nostack)
+        "int 0x80",
+        inlateout("rax") syscall as u64 => ret,
+        options(preserves_flags, nostack)
         );
     }
     ret
 }
-
-/*
- * Hier muss Code eingefuegt werden
- */
+// TODO: Implement system call wrapper functions with parameters
