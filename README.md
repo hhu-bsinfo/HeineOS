@@ -1,34 +1,47 @@
-# Aufgabe 10: Speicherverwaltung für physikalischen Speicher (Isolation und Schutz - Aufgabe 3)
+# Lesson 10: Memory Management for Physical Memory
 
-## Lernziele
-1. Eine Speicherverwaltung für physikalische Kacheln (Page Frames) implementieren.
+## Learning Goals
+1. Learn how the kernel detects physical memory
+2. Implement a memory allocator for physical page frames
 
-## A10.1: Verfügbaren physikalischen Speicher ermitteln
-Bevor das Paging implementiert wird, muss zunächst ermittelt werden, wie viel und wo nutzbarer physikalischer Speicher vorhanden ist. Die Lösung ist in `multiboot.rs` in der Funktion `init_phys_memory_allocator()` bereits vorhanden, soll aber gelesen und verstanden werden.
+## Assignment 10.1: Detect Usable Physical Memory
+Before we can start implementing paging, we need to detect the usable physical memory.
+Right now, we do not know how much physical memory is available and what parts of it are free.
+Some parts of the physical memory may be occupied by the BIOS and, of course, our kernel code and data.
 
-Die notwendigen Informationen bekommen wir von Multiboot in Form von `mmap`-Einträgen. Diese Einträge beschreiben jeweils einen zusammenhängenden Block physikalischen Speichers, der entweder reserviert oder verfügbar sein kann. Die als verfügbar markierten Speicherbereiche werden in unsere Speicherverwaltung für physikalischen Speicher via `PfListAllocator::free_block()` eingefügt. Wir müssen jedoch beachten, dass der Kernel-Code vom Bootloader nicht als reserviert markiert wird. Unser Kernel-Image wird an die Adresse 1 MiB geladen. Der Linker erzeugt die Symbole `___KERNEL_DATA_START__` und `___KERNEL_DATA_END__` um diesen Speicherbereich zu markieren. Außerdem wird der Bereich von 0 bis 1 MiB teilweise vom BIOS verwendet (Der Grafikspeicher liegt auch hier), weshalb wir ihn als nicht nutzbar betrachten. Der für uns nutzbare physikalische Speicher beginnt also direkt hinter dem Kernel Image.
+This information comes in the form of a *memory map* and is provided by the UEFI BIOS once the UEFI Boot Services are exited.
+This is done by the function `exit_uefi_boot_services()` in `boot.rs`.
+Other operating systems may rely on the bootloader to exit the UEFI Boot Services and provide the memory map, but in HeinOS, we do this manually.
 
-Fügen Sie den folgenden Code zu Beginn ihrer `startup()`-Funktion in `startup.rs` ein, um die physikalische Speicherverwaltung mit den freien Speicherblöcken aus der Multiboot Memory Map zu initialisieren:
-```
-// Copy multiboot into on stack, because it lies in physical memory that might get reused after initializing the physical memory allocator
-let multiboot_info = *multiboot_info;
+In the [given code](https://github.com/hhu-bsinfo/HeineOS/blob/lesson-9/kernel/src/boot.rs), the function `init_physical_memory_allocator()` is already fully implemented.
+It takes a reference to the memory map and initializes the physical memory allocator with the blocks that are marked as available.
+The kernel image is actually not reserved in the memory map but is located inside an available block.
+The function `init_physical_memory_allocator()` takes this into account and slices the available blocks accordingly.
 
-kprintln!("Initializing physical memory allocator");
-multiboot_info.init_phys_memory_allocator();
-```
+Your task is to look at the code carefully and understand how the memory map is used to initialize the physical memory allocator.
+Apart from that, you just have to call `init_physical_memory_allocator()` in `main()`, after the UEFI Boot Services have been exited, the GDT is loaded and initial pagin is set up.
 
-*Information zu Multiboot, insbesondere den mmap-Einträgen finden Sie hier:* https://www.gnu.org/software/grub/manual/multiboot/multiboot.html
+*Note: Detailed information about the memory map provided by the UEFI BIOS can be found in the [UEFI specification](https://uefi.org/specifications) in chapter 7.2.3: EFI_BOOT_SERVICES.GetMemoryMap().*
 
-## A10.2: Ein Allokator für Page Frames
-Der verfügbare physikalische Speicher muss in 4 KiB Kacheln (Page Frames) verwaltet werden. Hierfür wird nun ein Page-Frame-Allokator benötigt. Als Basis empfiehlt sich der vorhandene Heap-Allokator (in list.rs), der Code muss natürlich angepasst werden. Wir verketten also die freien Page-Frames, wobei ein Block aus mehreren aufeinanderfolgenden Page-Frames bestehen kann. Die Metadaten für freie Blöcke schreiben wir direkt in die freien Page-Frames. Für die belegten Page-Frames be­nötigen wir keine Metadaten, da es nur 4 KiB Page-Frames gibt und jeder Page-Frame von einem Seiten­tabellen-Eintrag referenziert wird, sobald wir Paging implementiert haben.
+## Assignment 10.2: An Allocator for Physical Page Frames
+The physical memory must be managed in 4 KiB page frames. As a basis for the allocator, we can use the existing list allocator used for the kernel heap.
+Of course, the allocator needs to be modified. Instead of arbitrary memory block, we now want to link free page frames, where each block may consist of multiple consecutive frames.
+The metadata for free blocks is stored directly inside the free page frames.
+We do not need metadata for used blocks, as all frames are 4 KiB in size and referenced by a page table entry, after we have implemented paging.
 
-Beim Freigeben eines Speicherblocks soll dieser **sortiert** in die Liste eingefügt werden. Falls ein freigegebener Block an seinen Vorgänger oder Nachfolger angrenzt, soll er mit diesem (oder falls möglich beiden) verschmolzen werden. So beugen wir einer Fragmentierung des Speichers in viele kleine Blöcke vor.
+When freeing a block of physical memory, it should be inserted into the list in a sorted order.
+The free blocks should always be sorted by their address.
+If a freed block is adjacent to its predecessor and/or successor, they should be merged into a single block.
+This prevents fragmentation of the physical memory into many small blocks.
 
-Schreiben sie eine Testfunktion, die die Korrektheit ihres Allokators überprüft. Hierfür ist es nützlich eine `dump()` Funktion zu implementieren, welche die gesamte Freispeicherliste auf dem Bildschirm oder seriellen Port ausgibt.
+Implement a test function that checks if the allocator works correctly.
+Like with the heap allocator, a `dump_free_list()` that print the free list to the terminal is helpful.
 
-*Wichtige Hinweise:*
- - *Der Allokator darf keinesfalls einen reservierten Page-Frame erneut vergeben! Bevor Sie fortfahren, sollten Sie die Korrektheit Ihres Page-Frame-Allokators testen! `assert!()` ist hier sehr nützlich.*
- - *Ferner empfiehlt es sich Page-Frames beim Allozieren mit 0 zu initialisieren. So können später Pointer-Fehler einfacher erkannt werden, da dann ein Null-Pointer-Zugriff mithilfe des Pagings erkannt werden kann.*
+*Important Notes:*
+- *The allocator must not allocate an already reserved page frame. Make sure your allocator works correctly before continuing with the next assignments. `assert!()` might be useful here.*
+- *It is recommended to fill allocated page frames with zeroes. This helps to detect illegal pointer accesses, as null pointer accesses can be detected via paging. However, this comes at a performance cost and is not required for this assignment.*
 
-## A10.3: Kernel Heap
-Nun soll noch die Initialisierung des bestehenden Allokators für den Heap in `startup.rs` angepasst werden. Statt an einer festen Adresse einfach freien Speicher zu vermuten, soll nun freier Speicher vom Page-Frame-Allokator für den Heap angefordert werden. Nun sollte alles weiterhin funktionieren. Die Stacks werden vorerst noch im Kernel-Heap alloziert. Dies ändert sich mit dem nächsten Aufgabenblatt, wenn wir Paging einführen.
+## Assignment 10.3:
+Now that we have a working allocator for physical memory, we can use it to allocate a block of memory for the kernel heap.
+Right now, we just put the kernel heap at a static address and just assume (or better, *hope*) that the memory there is available.
+Modify the `main()` method to allocate a block of contiguous physical memory and use it to initialize the kernel heap.

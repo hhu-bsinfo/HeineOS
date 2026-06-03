@@ -1,7 +1,16 @@
+/*
+ * Contains the interface definition for an Interrupt Service Routine (ISR).
+ * This must be implemented by a device driver if it needs to handle interrupts.
+ * The ISR is registered using the `register()` function in `intdispatcher.rs`.
+ *
+ * Author: Michael Schoetter, Heinrich Heine University Duesseldorf, 2024-01-21
+ *         Fabian Ruhland, Heinrich Heine University Duesseldorf, 2025-10-31
+ * License: GPLv3
+ */
+
 use core::fmt;
 use core::ops::{Add, Sub};
-use crate::consts::PAGE_FRAME_SIZE;
-use crate::library::input::getch;
+use crate::consts::PAGE_SIZE;
 use crate::library::spinlock::Spinlock as Mutex;
 
 pub static FRAME_ALLOCATOR: Mutex<PfListAllocator> = Mutex::new(PfListAllocator::new());
@@ -12,7 +21,7 @@ pub static FRAME_ALLOCATOR: Mutex<PfListAllocator> = Mutex::new(PfListAllocator:
 pub struct PhysAddr(u64);
 
 impl PhysAddr {
-    pub const fn new(addr: u64) -> Self {
+    pub fn new(addr: u64) -> Self {
         PhysAddr(addr)
     }
 
@@ -117,7 +126,7 @@ impl PfListNode {
 }
 
 /// A physical frame allocator that uses a linked list to manage free memory blocks.
-/// Memory blocks are always aligned to PAGE_FRAME_SIZE (4096 bytes).
+/// Memory blocks are always aligned to PAGE_SIZE (4096 bytes).
 pub struct PfListAllocator {
     head: PfListNode
 }
@@ -136,24 +145,18 @@ impl PfListAllocator {
     /// the remaining part is added back to the free list.
     /// If no suitable block is found, returns None.
     pub unsafe fn alloc_block(&mut self, num_frames: usize) -> Option<PhysAddr> {
-        /*
-         * Hier muss Code eingefuegt werden
-         */
+        todo!("PfListAllocator::alloc_block() is not implemented yet")
     }
 
     /// Free a previously allocated block of 'num_frames' physical frames starting at 'addr'.
-    /// The address must be aligned to PAGE_FRAME_SIZE (4096 bytes).
+    /// The address must be aligned to PAGE_SIZE (4096 bytes).
     /// The freed block is merged with adjacent free blocks if possible.
     pub unsafe fn free_block(&mut self, addr: PhysAddr, num_frames: usize) {
-        /*
-         * Hier muss Code eingefuegt werden
-         */
+        todo!("PfListAllocator::free_block() is not implemented yet")
     }
 
     /// Print the list of free physical memory.
     pub fn dump_free_list(&self) {
-        /*
-         * Hier muss Code eingefuegt werden
-         */
+        todo!("PfListAllocator::dump_free_list() is not implemented yet")
     }
 }
