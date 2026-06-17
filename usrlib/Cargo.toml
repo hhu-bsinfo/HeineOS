@@ -2,4 +2,6 @@
 edition = "2024"
 name = "usrlib"
 version = "0.1.0"
-authors = ["Michael Schöttner <michael.schoettner@hhu.de>"]
+
+[dependencies]
+bitflags = "2.11.0"

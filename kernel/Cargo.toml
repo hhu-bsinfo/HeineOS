@@ -1,0 +1,22 @@
+[package]
+name = "kernel"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+crate-type = ["staticlib"]
+path = "src/boot.rs"
+
+[dependencies]
+usrlib = { path = "../usrlib" }
+
+bitflags = "2.11.0"
+log = "0.4.29"
+uefi = "0.36.1"
+uefi-raw = "0.13.0"
+tar-no-std = "0.4.2"
+nolock = { version = "0.4.1", default-features = false, features = ["queues"] }
+unifont = { version = "1.1.0", optional = true }
+
+[features]
+unifont = ["dep:unifont"]

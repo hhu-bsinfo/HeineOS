@@ -1,54 +1,142 @@
-# Aufgabe 12: Separat kompilierte Anwendungen & Prozesse (Isolation & Schutz - Aufgabe 5)
+# Lesson 12: Processes
 
-## Lernziele
-1. Kernel- und User-Code separat voneinander kompilieren.
-2. Den Kernel vor Zugriff aus dem User Space schützen.
-3. Eine einfach Struktur zur Verwaltung von Prozessen einführen.
+## Learning Goals
+1. Compile applications separately from the kernel
+2. Protect the kernel against user space accesses
+3. Implement a process management structure
 
-## A12.1: Getrennte Übersetzung von Anwendungen
-In der Vorgabe finden Sie die neue Ordnerstruktur für Ihr Betriebssystem. Diese ist auf der obersten Ebene in drei Ordner aufgeteilt:
- - `os`: Enthält den gesamten Kernel-Quellcode
- - `apps`: Enthält den Quellcode für alle Anwendungen. Jede Anwendung ist dabei ein separates Rust-Projekt in einem eigenen Unterordner. Vorgegeben ist nur die Anwendung `hello`.
- - `usrlib`: Enthält Bibliotheksfunktionen, die von den Anwendung verwendet werden können.
- 
- Machen Sie sich zunächst mit der Vorgabe vertraut. Unter `apps/hello` finden Sie eine Beispiel-Anwendung, die als eigenes Rust-Projekt separat vom Kernel kompiliert wird. Diese soll von unserem Betriebssystem zur Laufzeit in ihren eigenen Adressraum geladen und ausgeführt werden. Hierbei stellen sich zunächst einige Fragen:
-  1. *Wie kommt unser Betriebssystem an die Anwendung?* Der Bootloader GRUB kann zusätzlich zum Kernel auch noch sogenannte Module für uns in den Arbeitsspeicher laden. Ein Modul ist dabei einfach eine beliebige Datei, die im Boot-Image hinterlegt ist. Wir packen alle unsere Anwendung zusammen in ein (unkomprimiertes) TAR-Archiv und lassen dieses vom Bootloader in den Arbetsspeicher laden. Unser Betriebssystem kann dann jederzeit auf Anwendungen in dem Archiv zugreigen und diese ausführen. Um das TAR-Archiv zu parsen nutzen wir die Crate `tar-no-std`.
-  2. *Welches Dateiformat haben unsere Anwendungen und wie finden wir darin den Code?* Wir linken die Anwendungen zunächst im ELF-Format. Dieses ist jedoch recht komplex und unser Betriebssystem bräuchte einen eigenen Parser dafür. Wir nutzen daher das Programm `objcopy` um den Code aus der ELF-Teil zu extrahieren und in einer sogenannten *Flat Binary* zu speichern. Diese enthält dann ausschließlich den Code und erfordert kein spezielles Parsing. Wir müssen bei diesem Ansatz nur dafür sorgen, dass die `main()`-Funktion einer Anwendung immer direkt am Anfang der Datei steht. Dafür versehen wir die `main()`-Funktion mit `#[unsafe(link_section = ".main")]` und erzeugen so eine eigene Sektion für diese. Im Linker-Skript sorgen wir dann dafür, dass die `main`-Sektion immer an den Anfang des Codes gelinkt wird.
-  3. *Wie können Anwendungen auf gemeinsame Bibliotheksfunktionen zugreifen, ohne dass wir doppelten Code erzeugen?* Dazu werden alle Bibliotheksfunktionen im Ordner `usrlib` implementiert. Jede Anwendung hat in ihrer `Makefile.toml` eine Abhängigkeit zu diesem Ordner. Das sorgt dafür, dass der Code aus `usrlib` mit jeder Anwendung kompiliert und statisch gelinkt wird.
+## Assignment 12.1: Compiling Applications
+The given code adds two new folders to your project's root folder.
+This separates the operating system into three parts:
 
-Um mit der neuen Ordnerstruktur zu starten, müssen Sie Ihren bisherigen Quellcode nach `os/src` kopieren. Anschließen müssen die Dateien `user_api.rs` und `spinlock.rs` nach `usrlib/src` kopiert werden. Dies erfordert leiche Anpassungen an Ihrem System, überall dort wo `Spinlock` importiert wird. Die Importe müssen so angepasst werden, dass sie nun das Spinlock aus `usrlib` importieren. Das Betriebssystem hat in seiner `Makefile.toml` bereits eine Abhängigkeit zur `usrlib`, so dass es dabei keine größeren Probleme geben sollte.
+- `kernel`: Contains the whole operating system code
+- `apps`: Contains all user space applications
+- `usrlib`: Contains library functions that can be used by user space applications (and also the kernel)
 
-In `usrlib/print.rs` sind bereits die Makros `pint!()` und `println!()` für den User-Space implementiert. Diese erwarten, dass der System Call `usr_print(msg: &str)` in `user_api.rs` implementiert ist. Dieser soll einen String an der aktuellen Cursor-Position ausgeben. Sie können die Vorgabe natürlich auch anpassen, falls Ihr System Call zur Textausgabe anders aussieht.
+Integrate the new structure into your project.
+Note, that the file `kernel/src/device/key.rs` has been split into two parts.
+One that remains inside the kernel and contains the keyboard buffer and one that only contains the `KeyEvent` struct in [usrlib/src/key.rs](https://github.com/hhu-bsinfo/HeineOS/blob/lesson-12/usrlib/src/key.rs).
+This is necessary because we want to pass key events from the kernel to the user space via system calls.
+However, the keyboard buffer should still be managed by the kernel and not be directly accessible from user space.
 
-In `os/src/boot/grub.cfg` muss außerdem noch die Zeile `module /boot/initrd.tar` unter `multiboot /boot/kernel.bin` ergänzt werden, damit der Bootloader das TAR-Archiv lädt.
+Now, get familiar with the example application in [apps/hello](https://github.com/hhu-bsinfo/HeineOS/blob/lesson-12/apps/hello).
+Our operating system should load this application into its own address space and execute it at runtime.
+This poses multiple questions:
 
-Beim Kompielieren ist nun der zusätzliche Parameter `--no-workspace` notwendig. Dieser sorgt dafür, dass das Build-System nicht die `Makefile.toml` jedes Unterprojekts einzeln ausführt, sondern nur die `Makefile.toml` im Wurzelverzeichnis unserer Projektstruktur beachtet. Diese wiederum hat Abhängigkeiten zu den `link`-Tasks der einzelnen Anwendungen und stellt so sicher, dass das Boot-Image erst gebaut wird, wenn alle Anwendungen kompiliert und gelinkt wurden. Der vollständige Befehl zum Starten des Systems lauten nun:
+1. *How can HeineOS access the application's code?*  
+   Application binaries are stored inside the initial ramdisk (TAR archive) and can thus be loaded via the filesystem.
+2. *What kind of file format do applications use and how can we find the executable code inside the file?*  
+   We initially link applications as ELF files. However, the ELF format is quite complex and would need a parser to extract the executable code.
+   Instead, we use the program `objcopy` to extract the code from the ELF file and store it inside a so-called *flat binary*, containing only the executable code.
+   We just need to make sure that an application's `main()` function is always stored right at the beginning of a flat binary.
+   To enforce this, we add the attribute `#[unsafe(link_section = ".main")]` to `main()`, creating an own linker section for the `main()` function.
+   Inside the linker script ([apps/link.ld](https://github.com/hhu-bsinfo/HeineOS/blob/lesson-12/apps/link.ld)), we ensure that the `main` section is always linked to the beginning of the code.
+3. *How can applications access library functions without duplicating code*
+   All library functions that are used by applications should be placed in the `usrlib` folder.
+   Each application has a dependency to this folder in its own `Makefile.toml`.
+   This way, the `usrlib` code compiled and linked into each application (and the kernel).
 
+After you have integrated the new structure, copy `once.rs`, `spinlock.rs` and `user_api.rs` from your kernel to `usrlib`.
+This will require you to update multiple `use` statements in the kernel code.
+Afterward, everything should compile and work as before.
+
+## Assignment 12.2: Mapping the Application Image
+Application binaries are included in the TAR archive (and thus in our filesystem) in the `apps` folder.
+New user threads should now always execute an application instead of a function.
+For that, physical memory must be allocated and the application code copied into it.
+Afterward, this physical memory must be mapped into the thread's address space.
+We always map code at address `0x100_0000_0000` (1 TiB) (see [consts.rs](https://github.com/hhu-bsinfo/HeineOS/blob/lesson-12/kernel/src/consts.rs)).
+The `entry` function of a user thread should now always point to this fixed virtual address.
+You can use `core::mem::transmute()` to cast this constant value to a `fn()` type variable (*CAUTION: This is unsafe and should only be used in exceptional cases*).
+
+Because applications are now no part of the kernel anymore, they cannot be debugged directly.
+The debugger cannot find the appropriate symbols in the kernel file.
+To solve this, we can execute the GDB command `add-symbol-file target/heineos_app/debug/hello.elf` in the debug console.
+*CAUTION: You should only load one application at a time, as the virtual addresses of different applications overlap, causing confusion in the debugger.*
+
+*Note: It is not possible to return from an application's `main()` function. All applications must terminate themselvses via the system call `usr_thread_exit()`*
+
+## Assignment 12.3: Protecting Kernel Space
+Until now, every application has read/write access to the kernel (addresses smaller than 1 TiB).
+We now want to protect the kernel against user space accesses, by deleting the `USER_ACCESSIBLE` flag in the corresponding page table entries.
+If you have used the functions `kernel_flags()` and `user_flags()` correctly in the last lesson, you only need to edit one line in `user_flags()`.
+
+Afterward, we need to modify the start procedure of a user mode thread.
+We cannot call `kickoff_user_thread()` anymore from `thread_user_start()`, as this function resides in kernel memory and is not accessible from user space.
+Instead, we can directly place the `entry` address of a user thread onto the prepared stack in `switch_to_user_mode()`.
+
+## Assignment 12.4: Process Management
+We now want to implement a process management structure and modify the thread creation code to start a new process with each user thread.
+
+All running processes should be stored in key-value-tree (`BTreeMap`) in [kernel/src/process/process.rs](https://github.com/hhu-bsinfo/HeineOS/blob/lesson-12/kernel/src/process/process.rs).
+The key of each entry is the process ID (PID), and the value is the process (struct `Process`) itself.
+This way, process information can be retrieved quickly via the PID.
+The `BTreeMap` is provided by `alloc` crate (part of the rust standard library).
+
+The kernel also has its own process that can be accessed via `process::kernel_process_id()`.
+Since the process also stores a reference to the PML4, the static variable `KERNEL_PAGE_TABLES` in `pages.rs` is no longer needed and should be deleted, along with the function `pages::kernel_page_tables()`.
+
+Next, some modification in `thread.rs` are necessary.
+The `Thread` struct should now also store the process ID of the process it belongs to and provide a function to retrieve it.
+
+In `scheduler.rs` a new function `Scheduler::spawn_process(app_path: &str)` should be implemented, that loads and runs an application from the given path.
+It should create a new process for the application, create a mapping for the application image and framebuffer and create a new user thread that runs the application.
+When an application terminates (i.e., the scheduler cleans up the corresponding thread), the process should be removed from the `BTreeMap`.
+
+Finally, a new system call `usr_process_get_id()` should be introduced that returns the PID of the currently running process.
+Test your operating system by calling different system calls from a user space application.
+
+## Optional Assignment: Isolated File Handles
+In its current state, the filesystem uses a global map to store open file handles.
+This is bad because one process can access file handles of another process by simply trying out different values as file handles.
+
+To solve this problem, the filesystem should use one map per process.
+This way, each process can only access its own file handles.
+
+Replace your `TarFs` struct with the following code:
+```rust
+pub struct TarFs {
+    /// The tar archive reference used to read files from.
+    archive: TarArchiveRef<'static>,
+    /// Maps of open file handles for each process.
+    open_handles: Spinlock<BTreeMap<usize, BTreeMap<FileHandle, OpenFile>>>,
+    /// The map of next available file handle IDs for each process.
+    next_handles: Spinlock<BTreeMap<usize, usize>>
+}
 ```
-cargo make --no-workspace qemu
+The `open_handles` map now takes a process ID as the key and has a map of file handles for each process as value.
+Furthermore, each process now has its own ID counter to determine the next available file handle ID in `next_handle`.
+
+Replace `Tarfs::next_handle_id()` with the following code:
+```rust
+/// Generate the next unique file handle ID for the current process.
+/// This function is called internally when a new file handle is created.
+fn next_handle_id(&self) -> usize {
+let pid = scheduler().get_active_pid();
+   let mut handles = self.next_handles.lock();
+   
+   match handles.get(&pid) {
+      Some(handle) => *handle,
+      None => {
+         handles.insert(pid, 1);
+         0
+      }
+   }
+}
 ```
+The function now first retrieves the current process ID via `scheduler::get_active_pid()` and then uses the `next_handles` to determine the next available file handle ID for the current process.
+If no entry for the current process exists, a new entry is created with the value `1`.
 
-## A12.2: Ein Mapping für das Anwendungsimage
-In der vorgegeben `multiboot.rs` finden Sie zwei Funktionen, die Sie in Ihre `multiboot.rs` kopieren sollen. Diese sind dafür zuständing, das TAR-Archiv mit unseren Anwendungen zu finden. Mit `get_initrd_archive()` erhalten Sie sich eine Referenz auf das Archiv. Das dazugehörige Struct und dessen Implementierung kommen aus der Crate `tar-no-std`. Mit der `entries()`-Methode des `TarArchiveRef`-Structs erhält man einen Iterator über alle Dateien des Archivs und kann diese so z.B. mit einer for-each-Schleife durchsuchen.
+Additionally, we need a function to remove processes from the `open_handles` and `next_handles` map:
+```rust
+/// Remove the process from the map of open handles and next available handle IDs.
+/// This should be called when the process is terminated to free up resources.
+pub fn remove_process(&self, pid: usize) {
+   self.open_handles.lock().remove(&pid);
+   self.next_handles.lock().remove(&pid);
+}
+```
+Call this function whenever a process terminates.
 
-Neue User-Threads sollen nun immer eine Anwendung aus dem TAR-Archiv ausführen. Dazu muss physikalischer Speicher in der passenden Größe alloziert und die Anwenndung dorthin kopiert werden. Anschließend muss Sie dieser physikalische Speicher in den Adressraum der Anwendung eingeblendet werden. Wir verwenden hierzu die Adresse `0x100_0000_0000`, was 1 TiB entspricht (siehe `consts.rs`). Hierfür bietet es sich an, eine weitere Funktion `map_user_app()` in `pages.rs` zu implementieren. Die `entry`-Funktion eines User-Threads soll nun einfach auf diese feste virtuelle Adresse verweisen. Mit `core::mem::transmute()` lässt sich die Konstante in den Typ `fn()` umwandeln (*ACHTUNG: Das ist unsafe und sollte nur in Ausnahmefällen genutzt werden!*).
-
-Da die Anwendungen nun nicht mehr Teil des Kernel-Images sind, lassen sie sich nicht direkt debuggen, da der Debugger die Symbole der Anwendnungen nicht kennt. Um das zu ändern, können Sie nach dem Starten des Debuggers das System anhalten und in der GDB-Konsole mit dem Befehl `add-symbol-file target/hhu_tosr_app/debug/hello.elf` die Anwendungssymbole nachladen. *ACHTUNG: Es sollte immer nur eine Anwendung auf einmal geladen werden, da sie sich die virtuellen Adressen der Anwendungen überlappen*.
-
-*Hinweis: Aus der main()-Funktion einer Anwendung kann man nicht mehr zurückkehren. Anwendungen müssen per System Call (`usr_thread_exit()`) beendet werden.
-
-## A12.3: Kernel-Space schützen
-Bisher kann jede Anwendung auf den Kernel-Speicherbereich (Adressen kleiner als 1 TiB) zugreifen (lesend und schreibend). Nun soll der Kernel über das Paging geschützt werden, in dem bei den entsprechenden Seitentabellen-Einträgen das User-Bit (U/S) gelöscht wird.
-
-Anschließend muss noch der Startvorgang eines User-Threads angepasst werden. Wir können nun von `thrad_user_start()` nicht mehr nach `kickoff_user_thread()` springen, da diese Funktion Teil des Kernels ist und somit im User-Mode nicht mehr ausgeführt werden kann. Wir müssen daher in `switch_to_usermode()` nun direkt die `entry` Adresse eines User-Threads auf den vorbereiteten Stack legen, statt der Adresse von `kickoff_user_thread()`.
-
-## A12.4: Prozesse
-In dieser Aufgabe wird eine Verwaltungsstruktur für Prozesse implementiert sowie der Start von Threads umgebaut, sodass nun Prozesse mit jeweils einem Thread gestartet werden. 
-
-Alle laufenden Prozesse sollen in `processes/process.rs` in einem Key-Value-Baum (`BTreeMap`) verwaltet werden. Als Key dient die Prozess-ID und als Value wird die Prozess-Struktur `Process` gespeichert. Hierdurch können Prozessinformationen später schnell über die pid abgerufen werden. Die Baumstruktor gibt es fertig in der Crate `alloc` (siehe Vorgabe).
-
-In `thread.rs` sind kleinere Anpassungen notwendig. Im `Thread`-Struct wird nun auch die Prozess-ID gespeichert, damit jeder Thread die Zuordnung zu seinem Prozess kennt.
-
-In `scheduler.rs` soll eine Funktion `spawn_process()` implementiert werden, welche den Namen einer Anwendung entgegennimmt, einen Prozess dafür anlegt, und sie in einem User-Thread startet. Wenn eine Anwendung beendet wird (`Scheduler::exit()`), soll außerdem auch der entsprechende Prozess aus der `BTreeMap` gelöscht werden.
-
-Zuletzt soll ein System Call implementiert werden, der die Prozess-ID des aktuell laufenden Threads zurückgibt. Testen Sie Ihr System außerdem, in dem Sie verschiedene System Calls von einer Anwendung aus aufrufen.
+Modify the remaining filesystem functions on your own, so that they work with the new `TarFs` structure.
+When a process has no entry in `open_handles` yet, create a new empty map for it.

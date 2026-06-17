@@ -1,5 +1,0 @@
-[toolchain]
-channel = "nightly-2025-10-01"
-profile = "minimal"
-components = ["cargo", "clippy", "rustc", "rustfmt", "rust-src"]
-targets = ["x86_64-unknown-linux-gnu"]

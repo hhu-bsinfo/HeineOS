@@ -1,50 +1,66 @@
-######################################
-# Environment variables
-######################################
-
 [env.development]
-CARGO_CFG_TARGET_FAMILY = "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}/hhu_tosr_app.json"
-BUILD_DIRECTORY = "${CARGO_MAKE_CRATE_TARGET_DIRECTORY}/hhu_tosr_app/debug"
+BUILD_DIRECTORY = "${CARGO_MAKE_CRATE_TARGET_DIRECTORY}/heineos_app/debug"
 CARGO_BUILD_OPTION = "--lib"
+CC_OPT_LEVEL = "0"
 
 [env.production]
-CARGO_CFG_TARGET_FAMILY = "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}/hhu_tosr_app.json"
-BUILD_DIRECTORY = "${CARGO_MAKE_CRATE_TARGET_DIRECTORY}/hhu_tosr_app/release"
+BUILD_DIRECTORY = "${CARGO_MAKE_CRATE_TARGET_DIRECTORY}/heineos_app/release"
 CARGO_BUILD_OPTION = "--release"
+CC_OPT_LEVEL = "3"
 
 [env]
 CARGO_MAKE_EXTEND_WORKSPACE_MAKEFILE = true
-RUST_TARGET_PATH = "${CARGO_MAKE_WORKING_DIRECTORY}"
+CARGO_CFG_TARGET_FAMILY = "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}/heineos_app.json"
 SOURCE_DIRECTORY = "${CARGO_MAKE_WORKING_DIRECTORY}/src"
-LINKER_FILE = "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}/apps/linker.ld"
+LINKER_FILE = "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}/apps/link.ld"
 RUST_OBJECT = "${BUILD_DIRECTORY}/lib${CARGO_MAKE_PROJECT_NAME}.a"
 APPLICATION_ELF = "${BUILD_DIRECTORY}/${CARGO_MAKE_PROJECT_NAME}.elf"
-APPLICATION_FLAT = "${BUILD_DIRECTORY}/${CARGO_MAKE_PROJECT_NAME}"
+APPLICATION_FLAT = "${INITRD_DIRECTORY}/apps/${CARGO_MAKE_PROJECT_NAME}"
+TARGET_CPU = "x86-64"
+RUSTFLAGS="-C target-cpu=${TARGET_CPU}"
+CC = { source = "${CARGO_MAKE_RUST_TARGET_OS}", default_value = "gcc", mapping = { "macos" = "x86_64-elf-gcc" } }
+AR = { source = "${CARGO_MAKE_RUST_TARGET_OS}", default_value = "ar", mapping = { "macos" = "x86_64-elf-ar" } }
 
-######################################
-# Build tasks
-######################################
-
-# Default task
 [tasks.default]
 alias = "link"
 
-# 
-# Compiling Rust sources
-#
 [tasks.compile]
 command = "cargo"
-args = [ "build", "-Z", "build-std=core,alloc", "-Z", "build-std-features=compiler-builtins-mem", "--target", "${CARGO_CFG_TARGET_FAMILY}", "${CARGO_BUILD_OPTION}" ]
+args = [ "build", "-Z", "build-std=core,alloc", "-Z", "build-std-features=compiler-builtins-mem", "-Z", "json-target-spec", "--target", "${CARGO_CFG_TARGET_FAMILY}", "${CARGO_BUILD_OPTION}" ]
+condition = { files_modified = { input = [
+    "${CARGO_MAKE_WORKING_DIRECTORY}/Cargo.toml",
+    "${SOURCE_DIRECTORY}/**/*.rs",
+    "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}/usrlib/**/*.rs"
+], output = [
+    "${BUILD_DIRECTORY}/lib${CARGO_MAKE_PROJECT_NAME}*"
+] } }
 
-#
-# Linking
-#
 [tasks.link-elf]
 command = "${LINKER}"
 args = [ "-n", "-T", "${LINKER_FILE}", "-o", "${APPLICATION_ELF}", "${RUST_OBJECT}", "-z", "noexecstack" ]
 dependencies = [ "compile" ]
+condition = { files_modified = { input = [
+    "${RUST_OBJECT}",
+    "${LINKER_FILE}"
+], output = [
+    "${APPLICATION_ELF}"
+] } }
+
+[tasks.create-app-directory]
+command = "mkdir"
+args = [ "-p", "${INITRD_DIRECTORY}/apps" ]
+condition = { files_modified = { input = [
+    "${APPLICATION_ELF}"
+], output = [
+    "${APPLICATION_FLAT}"
+] } }
 
 [tasks.link]
 command = "${OBJCOPY}"
 args = [ "-O", "binary", "${APPLICATION_ELF}", "${APPLICATION_FLAT}", "--set-section-flags", ".bss=alloc,load,contents" ]
-dependencies = [ "link-elf" ]
+dependencies = [ "link-elf", "create-app-directory" ]
+condition = { files_modified = { input = [
+    "${APPLICATION_ELF}"
+], output = [
+    "${APPLICATION_FLAT}"
+] } }
