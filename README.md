@@ -1,11 +1,19 @@
-# Aufgabe 14: Eine eigene BS-Erweiterung / Anwendung (Isolation & Schutz - Aufgabe 7)
+# Assignment 14: Implement your own Application or OS Component
+To conclude this course, you should again implement an application or component for your operating system.
+Of course, you can continue working on your project from [lesson 7](https://github.com/hhu-bsinfo/HeineOS/tree/lesson-7).
+In that case, applications implemented in lesson 7 should now be ported to user space.
 
-Zum Abschluss sollen Sie wieder eine eigene Erweiterung oder eine Anwendung für Ihr Betriebssystem schreiben. Sie können sich dabei an den untenstehenden Vorschlägen orientieren, oder selbst etwas ausdenken. Natürlich dürfen Sie auch Ihre Anwendung aus dem Kurs "Betriebssystementwicklung" weiter entwickeln.
-
-Hier sind einige Ideen für Erweiterungen Ihres Betriebssystems:
- - **User Mode Anwendungen mit mehreren Threads**: Aktuell hat jede Anwendung nur einen einzelnen Thread, der ihre `main()` Funktion ausführt. Es wäre jedoch wünschenswert, wenn eine Anwendung selbst neue Threads in ihrem Adressraum starten könnte.
- - **Aufräumen von Prozess/Thread Ressourcen**: Threads und Prozesse können aktuell zwar beendet werden, jedoch werden die von Ihnen verwendeten Ressourcen nicht wieder freigegeben.  
- Bei Threads wird der Kernel Stack nie freigegeben. Eigentlich würde am Ende von `scheduler::exit()` automatisch `drop()` für den beendeten Thread aufgerufen werden, da dieser nun nirgendwo mehr gespeichert ist (weder in der `ready_queue` noch in `active_thread`). Allerdings rufen wir vorher noch `Thread::switch()` auf und kehren nie wieder zurück. Dadurch wird das Thread Struct nicht gedroppt und somit auch der Kernel Stack nicht freigegeben. Wir dürfen den Thread aber nicht manuell vorher droppen, da `Thread::switch()` ja auch noch auf den beendeten Thread zugreift.  
- Bei Prozessen ist es so, dass wir die VMAs ja ohnehin manuell mit unserem Page Frame Allokator verwalten. Wir müssen sie also auch manuell wieder freigeben, wenn ein Prozess beendet wird. Außerdem sollten die von den Page Tables verwendeten Page Frames noch freigegeben werden.
- - **Erweiterung des Schedulers**: Für den Scheduler sind verschiedene Erweiterungen denkbar. Z.B. könnten Funktionen eingefügt werden, um Threads schlafen zu legen oder zu joinen (auf das Beenden eines anderen Threads zu warten). Außerdem könnten auch Prioritäten eingeführt werden.
- - **Terminal**: Ein Terminal, welches Anwendungen aus dem TAR-Archiv starten kann. Hierbei soll das Terminal selbst auch eine User Space Anwendung sein. Zum Starten anderer Anwendungen muss dementsprechend ein System Call eingeführt werden. Außerdem benötigt man einen Mechanismus, um auf die Beendigung einer laufenden Anwendung zu warten. Zur Demonstration sollten verschiedene kleinere Anwendungen/Demos implementiert werden, die vom Terminal aus gestartet werden können.
+## Example subjects
+- **User mode applications with multiple threads:** Currently, each application can only have a single thread executing the `main()` function.
+  It would be desirable for an operating system to support multiple user threads per application.
+- **Scheduler extensions:** Many extensions to the scheduler are possible.
+  For example, it does not support sleeping or joining (waiting for another thread to end) right now.
+  Furthermore, priorities could be introduced. You could also experiment with different scheduling algorithms.
+- **Terminal:** A terminal application that can start other applications from the filesystem.
+  The terminal itself should, of course, run in user space and start other applications via a system call.
+  Furthermore, a mechanism for waiting for another process to exit is required.
+  For demonstration purposes, multiple small applications or demos, that can be started from the terminal, should be implemented.
+- **Filesystem extensions:** Currently, all open file handles are stored in a global map in `TarFs`.
+  This is a problem, because any process can access any open file, even if it was opened by another process, by simply trying out different values as file handles.
+  The solution is to have one table per process, either as part of the `Process` struct, or by mapping the process id to the map of open files for the process in `TarFs`.  
+  Another extension to the filesystem would be creating and writing virtual (in memory) files in addition to the read-only TAR files.
