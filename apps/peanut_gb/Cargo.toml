@@ -1,0 +1,11 @@
+[package]
+edition = "2024"
+name = "peanut_gb"
+version = "0.1.0"
+
+[lib]
+crate-type = ["staticlib"]
+path = "src/peanut_gb.rs"
+
+[dependencies]
+usrlib = { path = "../../usrlib" }

@@ -1,0 +1,13 @@
+[package]
+edition = "2024"
+name = "doom"
+version = "0.1.0"
+
+[lib]
+crate-type = ["staticlib"]
+path = "src/doom.rs"
+
+[dependencies]
+usrlib = { path = "../../usrlib" }
+
+printf-compat = { version = "0.3.1", default-features = false }

@@ -1,3 +1,10 @@
+/*
+ * Contains the definition of a virtual memory area (VMA).
+ *
+ * Author: Michael Schoettner, Heinrich Heine University Duesseldorf, 2024-01-05
+ *         Fabian Ruhland, Heinrich Heine University Duesseldorf, 2026-06-18
+ * License: GPLv3
+ */
 use core::fmt;
 
 #[derive(Debug)]
@@ -5,9 +12,10 @@ pub enum VmaType {
     Code,
     Heap,
     Stack,
+    Framebuffer
 }
 
-/// Virtual Memory Area (VMA)
+/// Represents a virtual memory area (VMA) in the address space of a process.
 pub struct VMA {
     start: u64,
     end: u64,
@@ -22,9 +30,7 @@ impl VMA {
 
     /// Check if this VMA overlaps with another one.
     pub fn overlaps(&self, other: &VMA) -> bool {
-        /*
-         * Hier muss Code eingefuegt werden
-         */
+        todo!("VMA::overlaps() is not implemented yet!");
     }
 }
 
