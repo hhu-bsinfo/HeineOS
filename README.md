@@ -4,6 +4,9 @@
 1. Understand how system calls work and allow us to switch from ring 3 to ring 0 in a controlled manner
 2. Implement several system calls to expose kernel APIs to user mode threads
 
+## Slides for this assignment
+- Lecture 10: [System Calls](https://github.com/hhu-bsinfo/HeineOS/blob/main/slides/lecture10_system_calls.pdf)
+
 ## Assignment 9.1: Interrupt Descriptor Table (IDT)
 A fundamental approach to executing system calls is to trigger a software interrupt (e.g., 0x80 in Linux).
 This automatically switches the CPU to ring 0. However, we need a corresponding interrupt handler in our IDT.
