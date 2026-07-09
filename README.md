@@ -4,6 +4,11 @@
 1. Implement a basic paging mechanism
 2. Execute user threads in their own address spaces
 
+
+## Slides for this assignment
+- Lecture 11: [Paging](https://github.com/hhu-bsinfo/HeineOS/blob/main/slides/lecture11_paging.pdf)
+- Lecture 12: [Kernel Isolation](https://github.com/hhu-bsinfo/HeineOS/blob/main/slides/lecture12_isolation.pdf)
+
 ## Assignment 11.1: Kernel Page Tables
 We use a 4-level paging with only 4 KiB pages (not huge 2 MiB pages).
 The whole physical memory should be identity mapped (1:1).
