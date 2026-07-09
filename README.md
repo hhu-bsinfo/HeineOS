@@ -41,7 +41,7 @@ Like with the heap allocator, a `dump_free_list()` that print the free list to t
 - *The allocator must not allocate an already reserved page frame. Make sure your allocator works correctly before continuing with the next assignments. `assert!()` might be useful here.*
 - *It is recommended to fill allocated page frames with zeroes. This helps to detect illegal pointer accesses, as null pointer accesses can be detected via paging. However, this comes at a performance cost and is not required for this assignment.*
 
-## Assignment 10.3:
+## Assignment 10.3: Use Physical Memory for the Kernel Heap
 Now that we have a working allocator for physical memory, we can use it to allocate a block of memory for the kernel heap.
 Right now, we just put the kernel heap at a static address and just assume (or better, *hope*) that the memory there is available.
 Modify the `main()` method to allocate a block of contiguous physical memory and use it to initialize the kernel heap.
