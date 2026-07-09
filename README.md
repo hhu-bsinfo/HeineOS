@@ -8,6 +8,11 @@ If you have not heard the first course yet, or do not want to use your existing 
 1. Understand how application code can be executed in user mode (ring 3) on x86 platforms
 2. Prohibit user mode threads from executing privileged instructions
 
+
+## Slides for this assignment
+- Lecture 8: [Introduction](https://github.com/hhu-bsinfo/HeineOS/blob/main/slides/lecture8_introduction_(german).pdf)
+- Lecture 9: [Segmentation and Tasks](https://github.com/hhu-bsinfo/HeineOS/blob/main/slides/lecture9_segmentation_and_tasks.pdf)
+
 ## Assignment 8.1: Global Descriptor Table (GDT)
 If you continue developing your operating system from lessons 1–7, start by replacing your `boot.asm` file with the one provided in the [given code](https://github.com/hhu-bsinfo/HeineOS/blob/lesson-8/kernel/src/boot.asm).
 
