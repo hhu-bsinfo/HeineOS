@@ -234,7 +234,7 @@ condition = { files_modified = { input = [
 
 [tasks.link-elf]
 command = "${LINKER}"
-args = [ "-n", "-T", "${LINKER_FILE}", "-o", "${APPLICATION_ELF}", "${RUST_OBJECT}", "-z", "noexecstack" ]
+args = [ "-n", "-T", "${LINKER_FILE}", "-o", "${APPLICATION_ELF}", "${RUST_OBJECT}", "-z", "noexecstack", "--no-relax" ]
 dependencies = [ "compile", "archive-doom" ]
 condition = { files_modified = { input = [
     "${RUST_OBJECT}",
