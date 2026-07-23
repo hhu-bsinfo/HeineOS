@@ -158,7 +158,11 @@ Starting it will immediately cause a panic, because Doom calls a C standard libr
 
 Before you start implementing the missing functions, you should get a copy of a valid Doom *WAD* file.
 These files contain all assets and level data for the game.
-The WAD-file of Doom's free shareware version (containing only the first episode) is available at [doomwiki.org](https://doomwiki.org/wiki/DOOM1.WAD).
+The original WAD files are proprietary and cannot be distributed.
+However, a copy of the WAD file included in Doom's free shareware version (containing only the first episode) is available at [doomwiki.org](https://doomwiki.org/wiki/DOOM1.WAD).
+Alternatively, we recommend that you check out [Freedoom](https://freedoom.github.io/index.html).
+It provides completely free/libre campaigns for the Doom engine that can be run by doomgeneric.
+Once you have a valid WAD file, copy it to your `initrd/` folder and name it `doom.wad`.
 Copy the file to your `initrd/` folder and name it `doom.wad`.
 
 Furthermore, you need to make sure that your filesystem does not hand out the file handles 0, 1, and 2, as these are reserved for standard out, standard error, and standard in.
