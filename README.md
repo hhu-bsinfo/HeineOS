@@ -73,23 +73,42 @@ In 2024, C++ was completely replaced by Rust.
 <video src="https://github.com/user-attachments/assets/f259825d-37db-46b4-a432-b9c19cb9538b"></video>
 
 ### 2025
-Erik Gal - PAC-MAN
+- Erik Gal - PAC-MAN
 <video src="https://github.com/user-attachments/assets/73480e12-d03a-4bab-a24c-600349ac0275"></video>
 
-Lukas Lang - Pokémon Reimplementation (No Emulator!)
+- Lukas Lang - Pokémon Reimplementation (No Emulator!)
 <video src="https://github.com/user-attachments/assets/6ac2c105-1f27-493f-9448-1da3c8f2ec97"></video>
 
-Stephan Schmidt - Minesweeper
+- Stephan Schmidt - Minesweeper
 <video src="https://github.com/user-attachments/assets/425e2f81-81b0-4255-96dc-edf32fc4a60c"></video>
 
-Max Richter - CGA Pong
+- Max Richter - CGA Pong (Github: [DerHyper](https://github.com/DerHyper))
 <video src="https://github.com/user-attachments/assets/c36369b6-7603-46fc-a75e-e7a561addc48"></video>
 
-Kevin Weber - CGA PAC-MAN
+- Kevin Weber - CGA PAC-MAN
 <video src="https://github.com/user-attachments/assets/4fbd2a8b-3e12-461d-b1f3-d9607acc9259"></video>
 
 ### 2026
 In 2026, hhuTOS was renamed to HeineOS.
 It now works on modern 64-bit x86_64-computers with a UEFI BIOS and uses a framebuffer (provided by the bootloader) right from the start, instead of CGA text mode.
 
-*Hall of Fame entries will follow soon.*
+- Abdulrahman Al Hamidi - Snake
+<video src="https://github.com/user-attachments/assets/66e226f7-6e04-43f8-8637-10de1a2c8d56"></video>
+
+- Arda Öztürk - Roguelike
+<video src="https://github.com/user-attachments/assets/e4cacee6-cdc1-4f01-916d-50462c9faf1b"></video>
+
+- Ben Geissler - Picross
+<video src="https://github.com/user-attachments/assets/5edd8a3f-972c-44d7-81ed-af988c4f8343"></video>
+
+- David Baranowksi - Videopoker
+<video src="https://github.com/user-attachments/assets/68fd6c20-933a-45c8-a874-67e721990143"></video>
+
+- Felix Tichelofen - PvE Shooter
+<video src="https://github.com/user-attachments/assets/df92e9c9-e29d-4c62-be86-c3e0272c1954"></video>
+
+- Lennart Pries - Pomodoro Timer
+<video src="https://github.com/user-attachments/assets/7c72f203-5dae-45f2-8834-5ecf5d635a31"></video>
+
+- Lukas Medlitsch - Desktop Oberfläche
+<video src="https://github.com/user-attachments/assets/c1f5f9c8-8b55-417b-ba49-c3e1993ccfc7"></video>
