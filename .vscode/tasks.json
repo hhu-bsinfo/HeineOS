@@ -16,7 +16,7 @@
             "type": "shell",
             "isBackground": false,
             "command": "cargo",
-            "args": [ "make", "--no-workspace", "iso" ],
+            "args": [ "make", "--no-workspace", "image" ],
             "problemMatcher": []
         },
         {
