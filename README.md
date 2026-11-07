@@ -13,7 +13,7 @@ This information comes in the form of a *memory map* and is provided by the UEFI
 This is done by the function `exit_uefi_boot_services()` in `boot.rs`.
 Other operating systems may rely on the bootloader to exit the UEFI Boot Services and provide the memory map, but in HeinOS, we do this manually.
 
-In the [given code](https://github.com/hhu-bsinfo/HeineOS/blob/lesson-9/kernel/src/boot.rs), the function `init_physical_memory_allocator()` is already fully implemented.
+In the [given code](https://github.com/hhu-bsinfo/HeineOS/blob/lesson-10/kernel/src/boot.rs), the function `init_physical_memory_allocator()` is already fully implemented.
 It takes a reference to the memory map and initializes the physical memory allocator with the blocks that are marked as available.
 The kernel image is actually not reserved in the memory map but is located inside an available block.
 The function `init_physical_memory_allocator()` takes this into account and slices the available blocks accordingly.
